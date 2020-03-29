@@ -22,7 +22,7 @@
 //
 //============================================================================
 
-module wd1793 #(parameter RWMODE=1, EDSK=1)
+module wd1793 #(parameter RWMODE=0, EDSK=1)
 (
 	input        clk_sys,     // sys clock
 	input        ce,          // ce at CPU clock rate
@@ -120,33 +120,30 @@ reg  [19:0] disk_size;
 reg         layout_r;
 wire [19:0] hs  = (layout_r & side) ? disk_size >> 1 : 20'd0;
 wire  [7:0] dts = {disk_track[6:0], side} >> layout_r;
-always @* begin
+always @(posedge clk_sys) begin
 	case({var_size,size_code})
-				0: buff_a = hs + {{1'b0, dts, 4'b0000} + {dts, 3'b000} + {dts, 1'b0} + wdreg_sector - 1'd1,  7'd0};
-		 	   //1: buff_a = hs + {{dts, 4'b0000}                                     + wdreg_sector - 1'd1,  8'd0};
-				1: buff_a = hs + {{dts, 4'b0000}       +  dts                        + wdreg_sector - 1'd1,  8'd0};
-			 //1: buff_a = hs + {{dts, 4'b0000} +{dts, 1'b0}                          + wdreg_sector - 1'd1,  8'd0};
-			   //1: buff_a = hs + {{dts, 4'b0000} +  dts                              + wdreg_sector - 1'd1,  8'd0};
-				2: buff_a = hs + {{dts, 3'b000}  + dts                               + wdreg_sector - 1'd1,  9'd0};
-				3: buff_a = hs + {{dts, 2'b00}   + dts                               + wdreg_sector - 1'd1, 10'd0};
-				4: buff_a = hs + {{dts, 3'b000}  +{dts, 1'b0}                        + wdreg_sector - 1'd1,  9'd0};
-		default: buff_a = edsk_offset;
+				0: buff_a <= hs + {{1'b0, dts, 4'b0000} + {dts, 3'b000} + {dts, 1'b0} + wdreg_sector - 1'd1,  7'd0};
+				1: buff_a <= hs + {{dts, 4'b0000}                                     + wdreg_sector - 1'd1,  8'd0};
+				2: buff_a <= hs + {{dts, 3'b000}  + dts                               + wdreg_sector - 1'd1,  9'd0};
+				3: buff_a <= hs + {{dts, 2'b00}   + dts                               + wdreg_sector - 1'd1, 10'd0};
+				4: buff_a <= hs + {{dts, 3'b000}  +{dts, 1'b0}                        + wdreg_sector - 1'd1,  9'd0};
+		default: buff_a <= edsk_offset;
 	endcase
 	case({var_size,size_code})
-				0: sectors_per_track = 26;
-				1: sectors_per_track = 17;  //16 sectores por pista
-				2: sectors_per_track = 9;
-				3: sectors_per_track = 5;
-				4: sectors_per_track = 10;
-		default: sectors_per_track = edsk_spt;
+				0: sectors_per_track <= 26;
+				1: sectors_per_track <= 16;
+				2: sectors_per_track <= 9;
+				3: sectors_per_track <= 5;
+				4: sectors_per_track <= 10;
+		default: sectors_per_track <= edsk_spt;
 	endcase
 	case({var_size,size_code})
-				0: wd_size_code = 0;
-				1: wd_size_code = 1;
-				2: wd_size_code = 2;
-				3: wd_size_code = 3;
-				4: wd_size_code = 2;
-		default: wd_size_code = edsk_sizecode;
+				0: wd_size_code <= 0;
+				1: wd_size_code <= 1;
+				2: wd_size_code <= 2;
+				3: wd_size_code <= 3;
+				4: wd_size_code <= 2;
+		default: wd_size_code <= edsk_sizecode;
 	endcase
 end
 
@@ -321,7 +318,7 @@ always @(posedge clk_sys) begin
 		step_direction <= 0;
 		disk_track <= 0;
 		wdreg_track <= 0;
-		wdreg_sector <= 1;  //rampa
+		wdreg_sector <= 0;
 		wdreg_data <= 0;
 		data_length <= 0;
 		byte_addr <=0;
@@ -755,10 +752,10 @@ reg        scan_active = 0;
 reg [19:0] scan_addr;
 reg        scan_wr;
 
-reg  [1:0] edsk_sizecode = 1;      // sector size: 0=128K, 1=256K, 2=512K, 3=1024K
+reg  [1:0] edsk_sizecode = 0;      // sector size: 0=128K, 1=256K, 2=512K, 3=1024K
 reg        edsk_side = 0;          // Side number (0 or 1)
 reg  [6:0] edsk_track = 0;         // Track number
-reg  [7:0] edsk_sector = 0;        // Sector number 0..15 //rampa
+reg  [7:0] edsk_sector = 0;        // Sector number 0..15
 reg [19:0] edsk_offset = 0;
 reg  [7:0] edsk_trackf = 0, edsk_sidef = 0;
 
