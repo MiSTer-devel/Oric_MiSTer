@@ -7,7 +7,6 @@ set_global_assignment -name VHDL_FILE rtl/microdisc.vhd
 set_global_assignment -name VHDL_FILE rtl/rom/MICRODIS.vhd
 set_global_assignment -name VHDL_FILE rtl/rom/BASIC10.vhd
 set_global_assignment -name VHDL_FILE rtl/rom/BASIC11A.vhdl
-set_global_assignment -name VHDL_FILE rtl/spram.vhd
 set_global_assignment -name VHDL_FILE rtl/ula.vhd
 set_global_assignment -name VHDL_FILE rtl/m6522.vhd
 set_global_assignment -name VHDL_FILE rtl/video.vhd
