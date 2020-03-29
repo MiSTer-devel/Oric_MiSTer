@@ -333,12 +333,25 @@ always @(posedge clk_sys) if(reset) rom <= ~status[3];
 
 ///////////////////////////////////////////////////
 
+reg clk_pix2;
+always @(posedge clk_sys) clk_pix2 <= clk_pix;
+
 reg ce_pix;
+reg ce_pix2;
 always @(posedge CLK_VIDEO) begin
 	reg old_clk;
 	
-	old_clk <= clk_pix;
-	ce_pix <= ~old_clk & clk_pix;
+	old_clk <= clk_pix2;
+	ce_pix <= ~old_clk & clk_pix2;
+	ce_pix2 <= old_clk ^ clk_pix2;
+end
+
+reg HSync, VSync;
+always @(posedge CLK_VIDEO) begin
+	if(ce_pix) begin
+		HSync <= ~hs;
+		if(~HSync & ~hs) VSync <= ~vs;
+	end
 end
 
 wire [2:0] scale = status[12:10];
@@ -346,19 +359,19 @@ wire [2:0] sl = scale ? scale - 1'd1 : 3'd0;
 wire       scandoubler = scale || forced_scandoubler;
 
 assign VGA_F1 = 0;
-assign VGA_SL = sl[1:0]; 
+assign VGA_SL = sl[1:0];
 
+assign CE_PIXEL = scandoubler ? ce_pix_out : ce_pix2;
+
+wire ce_pix_out;
 video_mixer #(.LINE_LENGTH(250), .HALF_DEPTH(1), .GAMMA(1)) video_mixer
 (
 	.*,
 	.clk_vid(CLK_VIDEO),
-	.ce_pix_out(CE_PIXEL),
 	
 	.R({4{r}}),
 	.G({4{g}}),
 	.B({4{b}}),
-	.HSync(~hs),
-	.VSync(~vs),
 
 	.scanlines(0),
 	.hq2x(scale==1),
