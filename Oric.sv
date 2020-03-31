@@ -146,7 +146,7 @@ localparam CONF_STR = {
 	"S0,DSK,Mount Drive A:;",
 	"-;",
 	"O3,ROM,Oric Atmos,Oric 1;",
-	"O6,FDD Controller,Off,On;",
+	"O56,FDD Controller,Auto,Off,On;",
 	"O7,Drive Write,Allow,Prohibit;",
 	"-;",
 	"O4,Aspect ratio,4:3,16:9;",
@@ -320,7 +320,7 @@ oricatmos oricatmos
 	.fdd_layout       (0),
 	.phi2             (),
 	.pll_locked       (locked),
-	.disk_enable      (~status[6]),
+	.disk_enable      ((!status[6:5]) ? ~fdd_ready : status[5]),
 	.rom			      (rom),
 	.img_mounted      (img_mounted), // signaling that new image has been mounted
 	.img_size         (img_size), // size of image in bytes
