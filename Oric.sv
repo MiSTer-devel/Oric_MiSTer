@@ -173,7 +173,19 @@ pll pll
 	.locked(locked)
 );
 
-wire reset = RESET | status[0] | buttons[1];
+reg        reset = 0;
+reg [16:0] clr_addr = 0;
+always @(posedge clk_sys) begin
+
+	if(~&clr_addr) clr_addr <= clr_addr + 1'd1;
+	else reset <= 0;
+
+	if(RESET | status[0] | buttons[1]) begin
+		clr_addr <= 0;
+		reset <= 1;
+	end
+	
+end
 
 ///////////////////////////////////////////////////
 
@@ -261,7 +273,10 @@ wire  [7:0] ram_d;
 wire        ram_we,ram_cs;
 
 reg   [7:0] ram[65536];
-always @(posedge clk_sys) if(ram_we & ram_cs) ram[ram_ad] <= ram_d;
+always @(posedge clk_sys) begin
+	if(reset) ram[clr_addr[15:0]] <= '1;
+	else if(ram_we & ram_cs) ram[ram_ad] <= ram_d;
+end
 
 wire  [7:0] ram_q;
 always @(posedge clk_sys) ram_q <= ram[ram_ad];
@@ -292,7 +307,7 @@ oricatmos oricatmos
 	.K7_REMOTE			(),
 	.ram_ad           (ram_ad),
 	.ram_d            (ram_d),
-	.ram_q            (ram_cs ? ram_q : 8'd0),
+	.ram_q            (ram_q),
 	.ram_cs           (ram_cs),
 	.ram_oe           (),
 	.ram_we           (ram_we),
@@ -301,7 +316,7 @@ oricatmos oricatmos
 	.fd_led           (led_disk),
 	.fdd_ready        (fdd_ready),
 	.fdd_busy         (),
-	.fdd_reset        (reset),
+	.fdd_reset        (0),
 	.fdd_layout       (0),
 	.phi2             (),
 	.pll_locked       (locked),
