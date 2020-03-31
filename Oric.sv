@@ -322,10 +322,7 @@ oricatmos oricatmos
 );
 
 reg fdd_ready = 0;
-always @(posedge clk_sys) begin
-	if(img_mounted) fdd_ready <= |img_size;
-	if(reset) fdd_ready <= 0;
-end
+always @(posedge clk_sys) if(img_mounted) fdd_ready <= |img_size;
 
 reg rom = 0;
 always @(posedge clk_sys) if(reset) rom <= ~status[3];
