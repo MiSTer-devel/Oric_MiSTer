@@ -400,7 +400,7 @@ inst_key : keyboard
 		key_extended => key_extended,
 		key_strobe	=> key_strobe,
 		key_code		=> key_code,
-		row			=> via_pa_out,
+		row			=> ym_o_ioa,
 		col			=> via_pb_out (2 downto 0),
 		ROWbit		=> KEY_ROW,
 		swnmi			=> swnmi,
@@ -461,7 +461,7 @@ inst_microdisc: work.Microdisc
 
 via_pa_in <= (via_pa_out and not via_pa_out_oe) or (via_pa_in_from_psg and via_pa_out_oe);
 via_pb_in(2 downto 0) <= via_pb_out(2 downto 0);
-via_pb_in(3) <= '0' when ( (KEY_ROW or via_pa_out)) = x"FF" else  '1';
+via_pb_in(3) <= '0' when ( (KEY_ROW and (ym_o_ioa xor x"FF"))) = x"00" else  '1';
 via_pb_in(4) <=via_pb_out(4);
 via_pb_in(5) <= 'Z';
 via_pb_in(6) <=via_pb_out(6);

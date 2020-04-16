@@ -165,124 +165,87 @@ always @(posedge clk_sys) begin
 		endcase
 	end
 end
-
-wire no_key = (~sw0 & ~sw1 & ~sw2 & ~sw3 & ~sw4 & ~sw5 & ~sw6 & ~sw7 & ~sw8 & ~sw9 & ~swa & ~swb & ~swc & ~swd & ~swe & ~swf & 
-					~swg & ~swh & ~ swi & ~swj & ~ swk & ~swl & ~swm & ~swn & ~swo & ~swp & ~swq & ~swr & ~sws & ~swt & ~swu & ~swv &
-					~sww & ~swx & ~swy & ~swz & ~swU & ~swD & ~swR & ~swL & ~swrs & ~swls & ~swsp & ~swcom & ~swdot & ~swret & ~swfs & 
-					~sweq & ~swfcn & ~swdel & ~swrsb & ~swlsb & ~swbs & ~swdsh & ~swsq & ~swsc & ~swesc & ~swctl & ~swf1 & ~swf2 &
-					~swf3 & ~swf4 & ~swf5 & ~swf6);
 					
 always @(posedge clk_sys) begin
-		if (no_key) ROWbit <= 8'b11111111;
-		else if (col == 3'b111) begin
-
-			ROWbit <= 8'b11111111;
-			if (sweq) 	ROWbit <= 8'b01111111;
-			if (swf1) 	ROWbit <= 8'b10111111;
-			if (swret) 	ROWbit <= 8'b11011111;
-			if (swrs) 	ROWbit <= 8'b11101111;
-			if (sweq & swrs) ROWbit <= 8'b01101111;
-			if (swfs) 	ROWbit <= 8'b11110111;
-			if (swfs & swrs) ROWbit <= 8'b11100111;
-			if (sw0) 	ROWbit <= 8'b11111011;
-			if (sw0 & swrs) ROWbit <= 8'b11101011;
-			if (swl) 	ROWbit <= 8'b11111101;
-			if (swl & swrs) ROWbit <= 8'b11101101;
-			if (sw8) 	ROWbit <= 8'b11111110;
-			if (sw8 & swrs) ROWbit <= 8'b11101110;
+		if (col == 3'b111) begin
+			ROWbit[7] <= sweq;
+			ROWbit[6] <= swf1;
+			ROWbit[5] <= swret;
+			ROWbit[4] <= swrs;
+			ROWbit[3] <= swfs;
+			ROWbit[2] <= sw0;
+			ROWbit[1] <= swl;
+			ROWbit[0] <= sw8;
 		end
 		else if (col == 3'b110) begin
-
-			ROWbit <= 8'b11111111;
-			if (sww) 	ROWbit <= 8'b01111111;
-			if (sws) 	ROWbit <= 8'b10111111;
-			if (swa) 	ROWbit <= 8'b11011111;
-			if (swf2) 	ROWbit <= 8'b11101111;
-			if (swe) 	ROWbit <= 8'b11110111;
-			if (swg) 	ROWbit <= 8'b11111011;
-			if (swh) 	ROWbit <= 8'b11111101;
-			if (swy) 	ROWbit <= 8'b11111110;
+			ROWbit[7] <= sww;
+			ROWbit[6] <= sws;
+			ROWbit[5] <= swa;
+			ROWbit[4] <= swf2;
+			ROWbit[3] <= swe;
+			ROWbit[2] <= swg;
+			ROWbit[1] <= swh;
+			ROWbit[0] <= swy;
 		end
 		else if (col == 3'b101) begin
-
-			ROWbit <= 8'b11111111;	
-			if (swlsb) 	ROWbit <= 8'b01111111;
-			if (swrsb) 	ROWbit <= 8'b10111111;
-			if (swdel) 	ROWbit <= 8'b11011111;
-			if (swfcn) 	ROWbit <= 8'b11101111;
-			if (swp) 	ROWbit <= 8'b11110111;
-			if (swo) 	ROWbit <= 8'b11111011;
-			if (swi) 	ROWbit <= 8'b11111101;
-			if (swu) 	ROWbit <= 8'b11111110;
+			ROWbit[7] <= swlsb;
+			ROWbit[6] <= swrsb;
+			ROWbit[5] <= swdel;
+			ROWbit[4] <= swfcn;
+			ROWbit[3] <= swp;
+			ROWbit[2] <= swo;
+			ROWbit[1] <= swi;
+			ROWbit[0] <= swu;
 		end
 		else if (col == 3'b100) begin
-
-			ROWbit <= 8'b11111111;
-			if (swR) 	ROWbit <= 8'b01111111;
-			if (swD) 	ROWbit <= 8'b10111111;
-			if (swL) 	ROWbit <= 8'b11011111;
-			if (swls) 	ROWbit <= 8'b11101111;
-			if (swU) 	ROWbit <= 8'b11110111;
-			if (swdot) 	ROWbit <= 8'b11111011;
-			if (swdot & swls) ROWbit <= 8'b11101011;
-			if (swcom) 	ROWbit <= 8'b11111101;
-			if (swcom & swls) ROWbit <= 8'b11101101;
-			if (swsp) 	ROWbit <= 8'b11111110;
+			ROWbit[7] <= swR;
+			ROWbit[6] <= swD;
+			ROWbit[5] <= swL;
+			ROWbit[4] <= swls;
+			ROWbit[3] <= swU;
+			ROWbit[2] <= swdot;
+			ROWbit[1] <= swcom;
+			ROWbit[0] <= swsp;
 		end
 		else if (col == 3'b011) begin
-
-			ROWbit <= 8'b11111111;	
-			if (swsq) 	ROWbit <= 8'b01111111;
-			if (swbs) 	ROWbit <= 8'b10111111;
-			if (swf3) 	ROWbit <= 8'b11011111;
-			if (swf4) 	ROWbit <= 8'b11101111;
-			if (swdsh) 	ROWbit <= 8'b11110111;
-			if (swsc) 	ROWbit <= 8'b11111011;
-			if (sw9) 	ROWbit <= 8'b11111101;
-			if (swk) 	ROWbit <= 8'b11111110;
+			ROWbit[7] <= swsq;
+			ROWbit[6] <= swbs;
+			ROWbit[5] <= swf3;
+			ROWbit[4] <= swf4;
+			ROWbit[3] <= swdsh;
+			ROWbit[2] <= swsc;
+			ROWbit[1] <= sw9;
+			ROWbit[0] <= swk;
 		end
 		else if (col == 3'b010) begin
-
-			ROWbit <= 8'b11111111;
-			if (swctl) 	ROWbit <= 8'b11101111;
-			if (swc) 	ROWbit <= 8'b01111111;
-			if (swc & swctl) 	ROWbit <= 8'b01101111;
-			if (sw2) 	ROWbit <= 8'b10111111;
-			if (sw2 & swctl) 	ROWbit <= 8'b10101111;
-			if (swz) 	ROWbit <= 8'b11011111;
-			if (swz & swctl) 	ROWbit <= 8'b11001111;
-			if (sw4) 	ROWbit <= 8'b11110111;
-			if (sw4 & swctl) 	ROWbit <= 8'b11100111;
-			if (swb) 	ROWbit <= 8'b11111011;
-			if (swb & swctl) 	ROWbit <= 8'b11101011;
-			if (sw6) 	ROWbit <= 8'b11111101;
-			if (sw6 & swctl) 	ROWbit <= 8'b11101101;
-			if (swm) 	ROWbit <= 8'b11111110;
-			if (swm & swctl) 	ROWbit <= 8'b11101110;
+			ROWbit[7] <= swc;
+			ROWbit[6] <= sw2;
+			ROWbit[5] <= swz;
+			ROWbit[4] <= swctl;
+			ROWbit[3] <= sw4;
+			ROWbit[2] <= swb;
+			ROWbit[1] <= sw6;
+			ROWbit[0] <= swm;
 		end
 		else if (col == 3'b001) begin
-
-			ROWbit <= 8'b11111111;	
-			if (swd) 	ROWbit <= 8'b01111111;
-			if (swq) 	ROWbit <= 8'b10111111;
-			if (swesc) 	ROWbit <= 8'b11011111;
-			if (swf5) 	ROWbit <= 8'b11101111;
-			if (swf) 	ROWbit <= 8'b11110111;
-			if (swr) 	ROWbit <= 8'b11111011;
-			if (swt) 	ROWbit <= 8'b11111101;
-			if (swj) 	ROWbit <= 8'b11111110;
+			ROWbit[7] <= swd;
+			ROWbit[6] <= swq;
+			ROWbit[5] <= swesc;
+			ROWbit[4] <= swf5;
+			ROWbit[3] <= swf;
+			ROWbit[2] <= swr;
+			ROWbit[1] <= swt;
+			ROWbit[0] <= swj;
 		end
 		else if (col == 3'b000) begin
-
-			ROWbit <= 8'b11111111;
-			if (sw3) 	ROWbit <= 8'b01111111;
-			if (swx) 	ROWbit <= 8'b10111111;
-			if (sw1) 	ROWbit <= 8'b11011111;
-			if (swf6) 	ROWbit <= 8'b11101111;
-			if (swv) 	ROWbit <= 8'b11110111;
-			if (sw5) 	ROWbit <= 8'b11111011;
-			if (swn) 	ROWbit <= 8'b11111101;
-			if (sw7) 	ROWbit <= 8'b11111110;			
+			ROWbit[7] <= sw3;
+			ROWbit[6] <= swx;
+			ROWbit[5] <= sw1;
+			ROWbit[4] <= swf6;
+			ROWbit[3] <= swv;
+			ROWbit[2] <= sw5;
+			ROWbit[1] <= swn;
+			ROWbit[0] <= sw7;
 		end
 end
 endmodule
