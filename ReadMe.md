@@ -100,19 +100,6 @@ Actually Oric 1, Oric Atmos and Microdisc are fully functional.
 
   *NOTE*: There are known loading issues with multipart dsks; e.g. programs that use CLOAD to load in additional data from the dsk.
 
-## Joystick
-
-Almost all the Oric games don't have joystick support, but you can "map" the most used keys to a joystick adding by this to your **mist.ini** file.
-
-	[oric]
-	joy_key_map=1,4f     ; cursor right
-	joy_key_map=2,50     ; cursor left
-	joy_key_map=4,51     ; cursor down
-	joy_key_map=8,52     ; cursor up
-	joy_key_map=10,2c    ; button A as SPACE
-	joy_key_map=40,28    ; button SEL as ENTER
-	joy_key_map=80,44    ; button STA as F11
-
 ## Software redistribution.
 
  In the dsk directory, you will find some disk images in the proper format.
