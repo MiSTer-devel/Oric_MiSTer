@@ -37,7 +37,7 @@ Actually Oric 1, Oric Atmos and Microdisc are fully functional.
 
 ### KNOWN BUGS
 
-* Issues loading files on multipart dsks; i.e. programs using CLOAD to load in other data from the dsk.
+* Issue [loading files on multipart dsks](https://github.com/MiSTer-devel/Oric_MiSTer/issues/4); i.e. programs using CLOAD to load in other data from the dsk.
 
 ..if you find others, let us know, please.
 
@@ -98,7 +98,7 @@ Actually Oric 1, Oric Atmos and Microdisc are fully functional.
   * If dsk is NOT bootable, after inserting, try `DIR` to list contents then `!NAME_OF_FILE_TO_RUN` to load and run.
   * If you see errors like `Insert System Disk` try loading the SEDORIC first, exiting to the BASIC prompt, insert your dsk and use `DIR`, `!NAME_OF_FILE_TO_RUN`.
 
-  *NOTE*: There are known loading issues with multipart dsks; e.g. programs that use CLOAD to load in additional data from the dsk.
+  *NOTE*: There are known [loading issues](https://github.com/MiSTer-devel/Oric_MiSTer/issues/4) with multipart dsks; e.g. programs that use CLOAD to load in additional data from the dsk.
 
 ## Software redistribution.
 
