@@ -215,7 +215,7 @@ localparam CONF_STR = {
 	"OAC,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",
 	"OFG,Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
 	"-;",
-	"O8,Stereo,Off,On;",
+	"O89,Stereo,Off,ABC (West Europe),ACB (East Europe);",
 	"-;",
 	"R0,Reset & Apply;",
 	"V,v",`BUILD_DATE
@@ -324,8 +324,8 @@ wire key_strobe = old_keystb ^ ps2_key[10];
 reg old_keystb = 0;
 always @(posedge clk_sys) old_keystb <= ps2_key[10];
 
-wire  [9:0] psg_l;
-wire  [9:0] psg_r;
+wire  [15:0] psg_l;
+wire  [15:0] psg_r;
 wire        r, g, b; 
 wire        hs, vs, HBlank, VBlank;
 wire        clk_pix;
@@ -356,7 +356,7 @@ oricatmos oricatmos
 	.key_strobe       (key_strobe),
 	.PSG_OUT_L			(psg_l),
 	.PSG_OUT_R			(psg_r),
-	.STEREO           (status[8]),
+	.STEREO           (status[9:8]),
 	.VIDEO_CLK			(clk_pix),
 	.VIDEO_R				(r),
 	.VIDEO_G				(g),
@@ -445,8 +445,8 @@ video_mixer #(.LINE_LENGTH(250), .HALF_DEPTH(1), .GAMMA(1)) video_mixer
 
 ///////////////////////////////////////////////////
 
-assign AUDIO_L = {psg_l, 6'd0};
-assign AUDIO_R = {psg_r, 6'd0};
+assign AUDIO_L = psg_l; //{psg_l, 6'd0};
+assign AUDIO_R = psg_r; //{psg_r, 6'd0};
 
 wire tape_adc, tape_adc_act;
 ltc2308_tape ltc2308_tape
