@@ -324,8 +324,12 @@ wire key_strobe = old_keystb ^ ps2_key[10];
 reg old_keystb = 0;
 always @(posedge clk_sys) old_keystb <= ps2_key[10];
 
-wire  [15:0] psg_l;
-wire  [15:0] psg_r;
+
+wire  [7:0] psg_a;
+wire  [7:0] psg_b;
+wire  [7:0] psg_c;
+wire  [1:0] stereo = status [9:8];
+
 wire        r, g, b; 
 wire        hs, vs, HBlank, VBlank;
 wire        clk_pix;
@@ -354,9 +358,11 @@ oricatmos oricatmos
 	.key_code         (ps2_key[7:0]),
 	.key_extended     (ps2_key[8]),
 	.key_strobe       (key_strobe),
-	.PSG_OUT_L			(psg_l),
-	.PSG_OUT_R			(psg_r),
-	.STEREO           (status[9:8]),
+	//.PSG_OUT_L			(psg_l),
+	//.PSG_OUT_R			(psg_r),
+	.PSG_OUT_A        (psg_a),
+	.PSG_OUT_B        (psg_b),
+	.PSG_OUT_C        (psg_c),
 	.VIDEO_CLK			(clk_pix),
 	.VIDEO_R				(r),
 	.VIDEO_G				(g),
@@ -444,10 +450,15 @@ video_mixer #(.LINE_LENGTH(250), .HALF_DEPTH(1), .GAMMA(1)) video_mixer
 );
 
 ///////////////////////////////////////////////////
+always @ (psg_a, psg_b, psg_c, stereo) begin
+		case (stereo)
+			2'b01  : {AUDIO_L,AUDIO_R} <= {{2{psg_a|psg_b}},{2{psg_c|psg_b}}};
+			2'b10  : {AUDIO_L,AUDIO_R} <= {{2{psg_a|psg_c}},{2{psg_b|psg_c}}};
+			default: {AUDIO_L,AUDIO_R} <= {4{psg_a|psg_b|psg_c}};
+       endcase
+end
 
-assign AUDIO_L = psg_l; //{psg_l, 6'd0};
-assign AUDIO_R = psg_r; //{psg_r, 6'd0};
-
+///////////////////////////////////////////////////
 wire tape_adc, tape_adc_act;
 ltc2308_tape ltc2308_tape
 (

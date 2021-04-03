@@ -53,9 +53,11 @@ ENTITY oricatmos IS
 		K7_TAPEIN : IN STD_LOGIC;
 		K7_TAPEOUT : OUT STD_LOGIC;
 		K7_REMOTE : OUT STD_LOGIC;
-		PSG_OUT_L : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-		PSG_OUT_R : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-		STEREO : IN STD_LOGIC_VECTOR(1 downto 0);
+
+		PSG_OUT_A : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		PSG_OUT_B : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		PSG_OUT_C : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+
 		VIDEO_CLK : OUT STD_LOGIC;
 		VIDEO_R : OUT STD_LOGIC;
 		VIDEO_G : OUT STD_LOGIC;
@@ -135,9 +137,6 @@ ARCHITECTURE RTL OF oricatmos IS
 	SIGNAL psg_bc1 : STD_LOGIC;
 	SIGNAL ym_o_ioa : STD_LOGIC_VECTOR (7 DOWNTO 0);
 	SIGNAL psg_sound : STD_LOGIC_VECTOR (9 DOWNTO 0);
-	SIGNAL psg_a : STD_LOGIC_VECTOR (7 DOWNTO 0);
-	SIGNAL psg_b : STD_LOGIC_VECTOR (7 DOWNTO 0);
-	SIGNAL psg_c : STD_LOGIC_VECTOR (7 DOWNTO 0);
 	SIGNAL psg_sample_ok : STD_LOGIC;
 	-- ULA    
 	SIGNAL ula_phi2 : STD_LOGIC;
@@ -358,9 +357,9 @@ BEGIN
 		dout => via_pa_in_from_psg,
 		sample => psg_sample_ok,
 		sound => psg_sound,
-		A => psg_a,
-		B => psg_b,
-		C => psg_c,
+		A => PSG_OUT_A,
+		B => PSG_OUT_B,
+		C => PSG_OUT_C,
 		IOA_In => (OTHERS => '0'),
 		IOA_Out => ym_o_ioa,
 		IOB_In => (OTHERS => '0')
@@ -448,24 +447,9 @@ BEGIN
 
 
 	PROCESS BEGIN
+
 		WAIT UNTIL rising_edge(clk_in);
-
-		-- PSG mono/stereo mix
-		IF psg_sample_ok = '1' THEN
-		  CASE STEREO IS
-         WHEN "01" => -- ABC
-		      PSG_OUT_L <= psg_c & psg_b ;
-			   PSG_OUT_R <= psg_a & psg_b ;
-         WHEN "10" =>  -- ACB
-		      PSG_OUT_L <= psg_b & psg_c ;
-			   PSG_OUT_R <= psg_a & psg_c ;
-         WHEN OTHERS => 
-		      PSG_OUT_L <= psg_sound & "000000";
-			   PSG_OUT_R <= psg_sound & "000000";
-        END CASE;
-		END IF;
 	
-
 		-- expansion port
 		IF    cpu_rw = '1' AND ula_PHI2 = '1' AND ula_CSIOn = '0' AND cont_IOCONTROLn = '0' THEN
 			cpu_di <= cont_D_OUT;
