@@ -57,7 +57,8 @@ ENTITY oricatmos IS
 		PSG_OUT_A : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 		PSG_OUT_B : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
 		PSG_OUT_C : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-
+      PSG_OUT   : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
+		
 		VIDEO_CLK : OUT STD_LOGIC;
 		VIDEO_R : OUT STD_LOGIC;
 		VIDEO_G : OUT STD_LOGIC;
@@ -136,7 +137,6 @@ ARCHITECTURE RTL OF oricatmos IS
 	SIGNAL psg_bdir : STD_LOGIC;
 	SIGNAL psg_bc1 : STD_LOGIC;
 	SIGNAL ym_o_ioa : STD_LOGIC_VECTOR (7 DOWNTO 0);
-	SIGNAL psg_sound : STD_LOGIC_VECTOR (9 DOWNTO 0);
 	SIGNAL psg_sample_ok : STD_LOGIC;
 	-- ULA    
 	SIGNAL ula_phi2 : STD_LOGIC;
@@ -356,7 +356,7 @@ BEGIN
 		din => via_pa_out,
 		dout => via_pa_in_from_psg,
 		sample => psg_sample_ok,
-		sound => psg_sound,
+		sound => PSG_OUT,
 		A => PSG_OUT_A,
 		B => PSG_OUT_B,
 		C => PSG_OUT_C,

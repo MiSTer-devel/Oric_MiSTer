@@ -328,6 +328,8 @@ always @(posedge clk_sys) old_keystb <= ps2_key[10];
 wire  [7:0] psg_a;
 wire  [7:0] psg_b;
 wire  [7:0] psg_c;
+wire  [9:0] psg_out;
+
 wire  [1:0] stereo = status [9:8];
 
 wire        r, g, b; 
@@ -363,6 +365,7 @@ oricatmos oricatmos
 	.PSG_OUT_A        (psg_a),
 	.PSG_OUT_B        (psg_b),
 	.PSG_OUT_C        (psg_c),
+	.PSG_OUT          (psg_out),
 	.VIDEO_CLK			(clk_pix),
 	.VIDEO_R				(r),
 	.VIDEO_G				(g),
@@ -450,11 +453,11 @@ video_mixer #(.LINE_LENGTH(250), .HALF_DEPTH(1), .GAMMA(1)) video_mixer
 );
 
 ///////////////////////////////////////////////////
-always @ (psg_a, psg_b, psg_c, stereo) begin
+always @ (psg_a,psg_b,psg_c,psg_out,stereo) begin
 		case (stereo)
-			2'b01  : {AUDIO_L,AUDIO_R} <= {{2{psg_a|psg_b}},{2{psg_c|psg_b}}};
-			2'b10  : {AUDIO_L,AUDIO_R} <= {{2{psg_a|psg_c}},{2{psg_b|psg_c}}};
-			default: {AUDIO_L,AUDIO_R} <= {4{psg_a|psg_b|psg_c}};
+			2'b01  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_b}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
+			2'b10  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_c}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
+			default: {AUDIO_L,AUDIO_R} <= {psg_out,6'b0,psg_out,6'b0};
        endcase
 end
 
