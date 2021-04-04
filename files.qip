@@ -1,7 +1,6 @@
 set_global_assignment -name QIP_FILE rtl/T65/T65.qip
 set_global_assignment -name QIP_FILE rtl/jt49/hdl/jt49.qip
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wd1793.sv
-set_global_assignment -name VHDL_FILE rtl/vol_table_array.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/keyboard.sv 
 set_global_assignment -name VHDL_FILE rtl/microdisc.vhd
 set_global_assignment -name VHDL_FILE rtl/rom/MICRODIS.vhd
