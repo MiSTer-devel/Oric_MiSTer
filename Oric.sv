@@ -324,10 +324,10 @@ reg old_keystb = 0;
 always @(posedge clk_sys) old_keystb <= ps2_key[10];
 
 
-wire  [7:0] psg_a;
-wire  [7:0] psg_b;
-wire  [7:0] psg_c;
-wire  [9:0] psg_out;
+wire  [11:0] psg_a;
+wire  [11:0] psg_b;
+wire  [11:0] psg_c;
+wire  [13:0] psg_out;
 
 wire  [1:0] stereo = status [9:8];
 
@@ -452,13 +452,20 @@ video_mixer #(.LINE_LENGTH(250), .HALF_DEPTH(1), .GAMMA(1)) video_mixer
 );
 
 ///////////////////////////////////////////////////
-always @ (psg_a,psg_b,psg_c,psg_out,stereo) begin
-		case (stereo)
-			2'b01  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_b}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
-			2'b10  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_c}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
-			default: {AUDIO_L,AUDIO_R} <= {psg_out,6'b0,psg_out,6'b0};
-       endcase
-end
+//always @ (psg_a,psg_b,psg_c,psg_out,stereo) begin
+//		case (stereo)
+//			2'b01  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_b}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
+//			2'b10  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_c}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
+//			default: {AUDIO_L,AUDIO_R} <= {1'b0,psg_out,1'b0,1'b0,psg_out,1'b0};
+//       endcase
+//end
+
+wire [15:0] psg_ab = {2'b0,psg_a+psg_b,1'b0};
+wire [15:0] psg_ac = {2'b0,psg_a+psg_c,1'b0};
+wire [15:0] psg_bc = {2'b0,psg_b+psg_c,1'b0};
+
+assign AUDIO_L = (stereo == 2'b00) ? {1'b0,psg_out,1'b0} : (stereo == 2'b01) ? psg_ab: psg_ac;
+assign AUDIO_R = (stereo == 2'b00) ? {1'b0,psg_out,1'b0} : (stereo == 2'b01) ? psg_bc: psg_bc;
 
 ///////////////////////////////////////////////////
 wire tape_adc, tape_adc_act;
