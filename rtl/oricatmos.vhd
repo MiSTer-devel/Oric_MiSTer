@@ -40,8 +40,7 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
-USE ieee.std_logic_arith.ALL;
-USE ieee.std_logic_unsigned.ALL;
+USE ieee.numeric_std.all;
 ENTITY oricatmos IS
 	PORT (
 		CLK_IN : IN STD_LOGIC;
@@ -54,10 +53,10 @@ ENTITY oricatmos IS
 		K7_TAPEOUT : OUT STD_LOGIC;
 		K7_REMOTE : OUT STD_LOGIC;
 
-		PSG_OUT_A : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-		PSG_OUT_B : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-		PSG_OUT_C : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-      PSG_OUT   : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
+		PSG_OUT_A : OUT UNSIGNED(11 DOWNTO 0);
+		PSG_OUT_B : OUT UNSIGNED(11 DOWNTO 0);
+		PSG_OUT_C : OUT UNSIGNED(11 DOWNTO 0);
+      PSG_OUT   : OUT UNSIGNED(13 DOWNTO 0);
 		
 		VIDEO_CLK : OUT STD_LOGIC;
 		VIDEO_R : OUT STD_LOGIC;
@@ -201,28 +200,29 @@ ARCHITECTURE RTL OF oricatmos IS
 		);
 	END COMPONENT;
 
-
-	COMPONENT jt49_bus
-		PORT (
-			clk : IN STD_LOGIC;
-			clk_en : IN STD_LOGIC;
-			rst_n : IN STD_LOGIC;
+COMPONENT psg
+ PORT (
+			clock : IN STD_LOGIC;
+			ce    : IN STD_LOGIC;
+			reset : IN STD_LOGIC;
 			bdir : IN STD_LOGIC;
 			bc1 : IN STD_LOGIC;
 			sel : IN STD_LOGIC;
-			din : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-			dout : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-			sound : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
-			A : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-			B : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-			C : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-			sample : OUT STD_LOGIC;
-			IOA_In : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-			IOA_Out : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
-			IOB_In : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-			IOB_Out : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
-		);
-	END COMPONENT;
+			d   : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+			q   : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+
+			ioad : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+	      ioaq : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+			iobd : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+			iobq : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+
+			MIX : OUT UNSIGNED (13 DOWNTO 0);
+			A   : OUT UNSIGNED (11 DOWNTO 0);
+			B   : OUT UNSIGNED(11 DOWNTO 0);
+			C   : OUT UNSIGNED(11 DOWNTO 0)
+);
+END COMPONENT;
+
 
 BEGIN
 
@@ -345,26 +345,50 @@ BEGIN
 			CLK => CLK_IN
 		);
 
-	inst_psg : jt49_bus
-	PORT MAP(
-		clk => CLK_IN,
-		clk_en => ENA_1MHZ,
-		sel => '1',
-		rst_n => RESETn AND KEYB_RESETn,
-		bc1 => psg_bdir,
-		bdir => via_cb2_out,
-		din => via_pa_out,
-		dout => via_pa_in_from_psg,
-		sample => psg_sample_ok,
-		sound => PSG_OUT,
-		A => PSG_OUT_A,
-		B => PSG_OUT_B,
-		C => PSG_OUT_C,
-		IOA_In => (OTHERS => '0'),
-		IOA_Out => ym_o_ioa,
-		IOB_In => (OTHERS => '0')
-	);
 
+--	inst_psg : work.ym2149_audio
+--	PORT MAP(
+--		clk_i        => CLK_IN,
+--		en_clk_psg_i => ENA_1MHZ,
+--		sel_n_i      => '1',
+--		reset_n_i    => RESETn AND KEYB_RESETn,
+--		bc_i         => psg_bdir,
+--		bdir_i       => via_cb2_out,
+--		data_i       => via_pa_out,
+--		data_r_o     => via_pa_in_from_psg,
+--		--sample => psg_sample_ok,
+--		mix_audio_o  => PSG_OUT,
+--		ch_a_o       => PSG_OUT_A,
+--      ch_b_o       => PSG_OUT_B,
+--		ch_c_o       => PSG_OUT_C,
+--		io_a_i       => (OTHERS => '0'),
+--		io_a_o       => ym_o_ioa,
+--		io_b_i       => (OTHERS => '0')
+--	);
+
+  psg_a: psg
+  port map (
+      clock       => CLK_IN,
+      ce          => ENA_1MHZ,
+      reset       => RESETn AND KEYB_RESETn,
+      bdir        => via_cb2_out,
+      bc1         => psg_bdir,
+      d           => via_pa_out,
+      q           => via_pa_in_from_psg,
+      a           => PSG_OUT_A,
+      b           => PSG_OUT_B,
+      c           => PSG_OUT_C,
+      mix         => PSG_OUT,
+
+      ioad        => "ZZZZZZZZ",
+      ioaq        => ym_o_ioa,
+      iobd        => "ZZZZZZZZ",
+      iobq        => open,
+
+      sel         => '1'
+    );
+
+	
 	inst_key : keyboard
 	PORT MAP(
 		clk_sys => CLK_IN,

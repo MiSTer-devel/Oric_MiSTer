@@ -178,8 +178,8 @@ assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = '0; 
  
-assign LED_USER  = ioctl_download | led_disk | tape_adc_act;
-assign LED_DISK  = 0;
+assign LED_USER  = ioctl_download | fdd_busy | tape_adc_act;
+assign LED_DISK  = led_disk;
 assign LED_POWER = 0;
 assign BUTTONS   = 0; 
 assign VGA_SCALER= 0;
@@ -324,10 +324,10 @@ reg old_keystb = 0;
 always @(posedge clk_sys) old_keystb <= ps2_key[10];
 
 
-wire  [7:0] psg_a;
-wire  [7:0] psg_b;
-wire  [7:0] psg_c;
-wire  [9:0] psg_out;
+wire  [11:0] psg_a;
+wire  [11:0] psg_b;
+wire  [11:0] psg_c;
+wire  [13:0] psg_out;
 
 wire  [1:0] stereo = status [9:8];
 
@@ -386,7 +386,7 @@ oricatmos oricatmos
 	.joystick_1       (0),
 	.fd_led           (led_disk),
 	.fdd_ready        (fdd_ready),
-	.fdd_busy         (),
+	.fdd_busy         (fdd_busy),
 	.fdd_reset        (0),
 	.fdd_layout       (0),
 	.phi2             (),
@@ -407,12 +407,13 @@ oricatmos oricatmos
 	.sd_din_strobe    (0)
 );
 
-reg fdd_ready = 0;
-always @(posedge clk_sys) if(img_mounted) fdd_ready <= |img_size;
+
 
 reg rom = 0;
 always @(posedge clk_sys) if(reset) rom <= ~status[3];
 
+reg fdd_ready = 0;
+always @(posedge clk_sys) if(img_mounted) fdd_ready <= |img_size;
 
 ///////////////////////////////////////////////////
 
@@ -452,13 +453,21 @@ video_mixer #(.LINE_LENGTH(250), .HALF_DEPTH(1), .GAMMA(1)) video_mixer
 );
 
 ///////////////////////////////////////////////////
-always @ (psg_a,psg_b,psg_c,psg_out,stereo) begin
-		case (stereo)
-			2'b01  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_b}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
-			2'b10  : {AUDIO_L,AUDIO_R} <= {{{2'b0,psg_a} + {2'b0,psg_c}},6'b0,{{2'b0,psg_c} + {2'b0,psg_b}},6'b0};
-			default: {AUDIO_L,AUDIO_R} <= {psg_out,6'b0,psg_out,6'b0};
-       endcase
+
+reg [12:0] psg_ab;
+reg [12:0] psg_ac;
+reg [12:0] psg_bc;
+
+
+always @ (clk_sys) begin
+ psg_ab <= {{1'b0,psg_a} + {1'b0,psg_b}};
+ psg_ac <= {{1'b0,psg_a} + {1'b0,psg_c}};
+ psg_bc <= {{1'b0,psg_b} + {1'b0,psg_c}};
 end
+
+
+assign AUDIO_L = (stereo == 2'b00) ? {psg_out,2'b0} : (stereo == 2'b01) ? {psg_ab,3'b0}: {psg_ac,3'b0};
+assign AUDIO_R = (stereo == 2'b00) ? {psg_out,2'b0} : (stereo == 2'b01) ? {psg_bc,3'b0}: {psg_bc,3'b0};
 
 ///////////////////////////////////////////////////
 wire tape_adc, tape_adc_act;
