@@ -1,5 +1,5 @@
 set_global_assignment -name QIP_FILE rtl/T65/T65.qip
-set_global_assignment -name VHDL_FILE rtl/ym2149_audio.vhd
+set_global_assignment -name VERILOG_FILE rtl/psg.v
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wd1793.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/keyboard.sv 
 set_global_assignment -name VHDL_FILE rtl/microdisc.vhd

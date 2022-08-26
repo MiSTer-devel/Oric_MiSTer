@@ -103,8 +103,8 @@ generate
 			.wren_a(sd_buff_wr & sd_ack),
 			.q_a(sd_buff_din),
 
-			.address_b(scan_active ? {2'b00, scan_addr[8:0]} : byte_addr),
-			.data_b(format ? 8'd0 : din),
+         .address_b(scan_active ? img_size[19] ? scan_addr[9:0] : scan_addr[8:0] : byte_addr),
+	  	   .data_b(format ? 8'd0 : din),
 			.wren_b(wre & buff_wr & (addr == A_DATA) & ~scan_active),
 			.q_b(buff_dout)
 		);
