@@ -55,16 +55,22 @@ ENTITY Microdisc IS
 		nEOE : OUT STD_LOGIC; -- Output Enable
 		ENA : IN STD_LOGIC;
 
-		img_mounted : IN STD_LOGIC;
-		img_wp : IN STD_LOGIC;
+		img_mounted : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
+		img_wp : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
 		img_size : IN STD_LOGIC_VECTOR (31 DOWNTO 0);
-		sd_lba : OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
-		sd_rd : OUT STD_LOGIC;
-		sd_wr : OUT STD_LOGIC;
-		sd_ack : IN STD_LOGIC;
+		sd_lba_fd0 : OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
+		sd_lba_fd1 : OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
+		sd_lba_fd2 : OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
+		sd_lba_fd3 : OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
+		sd_rd : OUT STD_LOGIC_VECTOR (3 DOWNTO 0);
+		sd_wr : OUT STD_LOGIC_VECTOR (3 DOWNTO 0);
+		sd_ack : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
 		sd_buff_addr : IN STD_LOGIC_VECTOR (8 DOWNTO 0);
 		sd_dout : IN STD_LOGIC_VECTOR (7 DOWNTO 0);
-		sd_din : OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
+		sd_din_fd0 : OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
+		sd_din_fd1 : OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
+		sd_din_fd2 : OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
+		sd_din_fd3 : OUT STD_LOGIC_VECTOR (7 DOWNTO 0);
 		sd_dout_strobe : IN STD_LOGIC;
 		sd_din_strobe : IN STD_LOGIC;
 
@@ -138,8 +144,20 @@ ARCHITECTURE Behavioral OF Microdisc IS
 	SIGNAL fdc_A : STD_LOGIC_VECTOR(1 DOWNTO 0);
 	SIGNAL fdc_DALin : STD_LOGIC_VECTOR(7 DOWNTO 0);
 	SIGNAL fdc_DALout : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SIGNAL fdc_DALout_fd0 : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SIGNAL fdc_DALout_fd1 : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SIGNAL fdc_DALout_fd2 : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SIGNAL fdc_DALout_fd3 : STD_LOGIC_VECTOR(7 DOWNTO 0);
 	SIGNAL fdc_DRQ : STD_LOGIC;
+	SIGNAL fdc_DRQ_fd0 : STD_LOGIC;
+	SIGNAL fdc_DRQ_fd1 : STD_LOGIC;
+	SIGNAL fdc_DRQ_fd2 : STD_LOGIC;
+	SIGNAL fdc_DRQ_fd3 : STD_LOGIC;
 	SIGNAL fdc_IRQ : STD_LOGIC;
+	SIGNAL fdc_IRQ_fd0 : STD_LOGIC;
+	SIGNAL fdc_IRQ_fd1 : STD_LOGIC;
+	SIGNAL fdc_IRQ_fd2 : STD_LOGIC;
+	SIGNAL fdc_IRQ_fd3 : STD_LOGIC;
 
 	SIGNAL sel : STD_LOGIC;
 	SIGNAL u16k : STD_LOGIC;
@@ -155,6 +173,12 @@ ARCHITECTURE Behavioral OF Microdisc IS
 	SIGNAL IRQEN : STD_LOGIC; -- IRQ Enable
 
 	SIGNAL inMCRQ : STD_LOGIC;
+	
+	SIGNAL fdd0_busy : STD_LOGIC;
+	SIGNAL fdd1_busy : STD_LOGIC;
+	SIGNAL fdd2_busy : STD_LOGIC;
+	SIGNAL fdd3_busy : STD_LOGIC;
+	
 
 BEGIN
 	fdc1 : wd1793
@@ -169,15 +193,15 @@ BEGIN
 		ce => fdc_CLK_en,
 
 		reset => NOT nRESET,
-		io_en => NOT fdc_nCS,
+		io_en => NOT fdc_nCS and NOT DSEL(1) and NOT DSEL(0),
 		rd => NOT fdc_nRE,
 		wr => NOT fdc_nWE,
 		addr => fdc_A,
 		din => fdc_DALin,
-		dout => fdc_DALout,
+		dout => fdc_DALout_fd0,
 
-		intrq => fdc_IRQ,
-		drq => fdc_DRQ,
+		intrq => fdc_IRQ_fd0,
+		drq => fdc_DRQ_fd0,
 
 		ready => fdd_ready,
 		--busy          => fdd_busy, 
@@ -185,17 +209,17 @@ BEGIN
 		layout => fdd_layout, --fdd_layout, 
 		size_code => "001",
 		side => SSEL,
-		prepare => fdd_busy,
-		img_mounted => img_mounted,
-		wp => img_wp,
+		prepare => fdd0_busy,
+		img_mounted => img_mounted(0),
+		wp => img_wp(0),
 		img_size => img_size (19 DOWNTO 0),
-		sd_lba => sd_lba,
-		sd_rd => sd_rd,
-		sd_wr => sd_wr,
-		sd_ack => sd_ack,
+		sd_lba => sd_lba_fd0,
+		sd_rd => sd_rd(0),
+		sd_wr => sd_wr(0),
+		sd_ack => sd_ack(0),
 		sd_buff_addr => sd_buff_addr,
 		sd_buff_dout => sd_dout,
-		sd_buff_din => sd_din,
+		sd_buff_din => sd_din_fd0,
 		sd_buff_wr => sd_dout_strobe,
 
 		input_active => '0',
@@ -205,6 +229,154 @@ BEGIN
 		buff_din => (OTHERS => '0')
 
 	);
+	
+	fdc2 : wd1793
+	GENERIC MAP
+	(
+		EDSK => 1,
+		RWMODE => 1
+	)
+	PORT MAP
+	(
+		clk_sys => clk_sys,
+		ce => fdc_CLK_en,
+
+		reset => NOT nRESET,
+		io_en => NOT fdc_nCS and NOT DSEL(1) and DSEL(0),
+		rd => NOT fdc_nRE,
+		wr => NOT fdc_nWE,
+		addr => fdc_A,
+		din => fdc_DALin,
+		dout => fdc_DALout_fd1,
+
+		intrq => fdc_IRQ_fd1,
+		drq => fdc_DRQ_fd1,
+
+		ready => fdd_ready,
+		--busy          => fdd_busy, 
+
+		layout => fdd_layout, --fdd_layout, 
+		size_code => "001",
+		side => SSEL,
+		prepare => fdd1_busy,
+		img_mounted => img_mounted(1),
+		wp => img_wp(1),
+		img_size => img_size (19 DOWNTO 0),
+		sd_lba => sd_lba_fd1,
+		sd_rd => sd_rd(1),
+		sd_wr => sd_wr(1),
+		sd_ack => sd_ack(1),
+		sd_buff_addr => sd_buff_addr,
+		sd_buff_dout => sd_dout,
+		sd_buff_din => sd_din_fd1,
+		sd_buff_wr => sd_dout_strobe,
+
+		input_active => '0',
+		input_addr => (OTHERS => '0'),
+		input_data => (OTHERS => '0'),
+		input_wr => '0',
+		buff_din => (OTHERS => '0')
+
+	);
+
+	fdc3 : wd1793
+	GENERIC MAP
+	(
+		EDSK => 1,
+		RWMODE => 1
+	)
+	PORT MAP
+	(
+		clk_sys => clk_sys,
+		ce => fdc_CLK_en,
+
+		reset => NOT nRESET,
+		io_en => NOT fdc_nCS and DSEL(1) and NOT DSEL(0),
+		rd => NOT fdc_nRE,
+		wr => NOT fdc_nWE,
+		addr => fdc_A,
+		din => fdc_DALin,
+		dout => fdc_DALout_fd2,
+
+		intrq => fdc_IRQ_fd2,
+		drq => fdc_DRQ_fd2,
+
+		ready => fdd_ready,
+		--busy          => fdd_busy, 
+
+		layout => fdd_layout, --fdd_layout, 
+		size_code => "001",
+		side => SSEL,
+		prepare => fdd2_busy,
+		img_mounted => img_mounted(2),
+		wp => img_wp(2),
+		img_size => img_size (19 DOWNTO 0),
+		sd_lba => sd_lba_fd2,
+		sd_rd => sd_rd(2),
+		sd_wr => sd_wr(2),
+		sd_ack => sd_ack(2),
+		sd_buff_addr => sd_buff_addr,
+		sd_buff_dout => sd_dout,
+		sd_buff_din => sd_din_fd2,
+		sd_buff_wr => sd_dout_strobe,
+
+		input_active => '0',
+		input_addr => (OTHERS => '0'),
+		input_data => (OTHERS => '0'),
+		input_wr => '0',
+		buff_din => (OTHERS => '0')
+
+	);
+
+	fdc4 : wd1793
+	GENERIC MAP
+	(
+		EDSK => 1,
+		RWMODE => 1
+	)
+	PORT MAP
+	(
+		clk_sys => clk_sys,
+		ce => fdc_CLK_en,
+
+		reset => NOT nRESET,
+		io_en => NOT fdc_nCS and DSEL(1) and DSEL(0),
+		rd => NOT fdc_nRE,
+		wr => NOT fdc_nWE,
+		addr => fdc_A,
+		din => fdc_DALin,
+		dout => fdc_DALout_fd3,
+
+		intrq => fdc_IRQ_fd3,
+		drq => fdc_DRQ_fd3,
+
+		ready => fdd_ready,
+		--busy          => fdd_busy, 
+
+		layout => fdd_layout, --fdd_layout, 
+		size_code => "001",
+		side => SSEL,
+		prepare => fdd3_busy,
+		img_mounted => img_mounted(3),
+		wp => img_wp(3),
+		img_size => img_size (19 DOWNTO 0),
+		sd_lba => sd_lba_fd3,
+		sd_rd => sd_rd(3),
+		sd_wr => sd_wr(3),
+		sd_ack => sd_ack(3),
+		sd_buff_addr => sd_buff_addr,
+		sd_buff_dout => sd_dout,
+		sd_buff_din => sd_din_fd3,
+		sd_buff_wr => sd_dout_strobe,
+
+		input_active => '0',
+		input_addr => (OTHERS => '0'),
+		input_data => (OTHERS => '0'),
+		input_wr => '0',
+		buff_din => (OTHERS => '0')
+
+	);
+
 	-- Reset
 	nHOSTRST <= '0' WHEN nRESET = '0' ELSE
 		'1';
@@ -221,6 +393,10 @@ BEGIN
 	fdc_nRE <= IO OR NOT RnW;
 	fdc_nWE <= IO OR RnW;
 	fdc_DALin <= DI;
+	
+	-- FDD BUSY SIGNAL
+	fdd_busy <= fdd0_busy or fdd1_busy or fdd2_busy or fdd3_busy;
+	
 	-- DEBUG led
 
 	fd_led <= fdd_busy;
@@ -245,6 +421,36 @@ BEGIN
 	DIR <= iDIR;
 	iDIR <= RnW;
 
+	PROCESS (fdc_DALout_fd0, fdc_DALout_fd1, fdc_DALout_fd2, fdc_DALout_fd3, DSEL)
+	BEGIN
+		IF DSEL = "00" then fdc_DALout <= fdc_DALout_fd0;
+		ELSIF DSEL = "01" then fdc_DALout <= fdc_DALout_fd1;
+		ELSIF DSEL = "10" then fdc_DALout <= fdc_DALout_fd2;
+		ELSIF DSEL = "11" then fdc_DALout <= fdc_DALout_fd3;
+		ELSE fdc_DALout <= fdc_DALout_fd0;
+		END IF;
+	END PROCESS;
+	
+	PROCESS (fdc_DRQ_fd0, fdc_DRQ_fd1, fdc_DRQ_fd2, fdc_DRQ_fd3, DSEL)
+	BEGIN
+		IF DSEL = "00" then fdc_DRQ <= fdc_DRQ_fd0;
+		ELSIF DSEL = "01" then fdc_DRQ <= fdc_DRQ_fd1;
+		ELSIF DSEL = "10" then fdc_DRQ <= fdc_DRQ_fd2;
+		ELSIF DSEL = "11" then fdc_DRQ <= fdc_DRQ_fd3;
+		ELSE fdc_DRQ <= fdc_DRQ_fd0;
+		END IF;
+	END PROCESS;
+	
+	PROCESS (fdc_IRQ_fd0, fdc_IRQ_fd1, fdc_IRQ_fd2, fdc_IRQ_fd3, DSEL)
+	BEGIN
+		IF DSEL = "00" then fdc_IRQ <= fdc_IRQ_fd0;
+		ELSIF DSEL = "01" then fdc_IRQ <= fdc_IRQ_fd1;
+		ELSIF DSEL = "10" then fdc_IRQ <= fdc_IRQ_fd2;
+		ELSIF DSEL = "11" then fdc_IRQ <= fdc_IRQ_fd3;
+		ELSE fdc_IRQ <= fdc_IRQ_fd0;
+		END IF;
+	END PROCESS;
+	
 	-- Data Bus Control.
 	PROCESS (iDIR, fdc_DALout, fdc_DRQ, fdc_IRQ, fdc_nRE, A, fdc_nCS)
 	BEGIN
