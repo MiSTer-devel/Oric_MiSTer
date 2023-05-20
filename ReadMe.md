@@ -84,13 +84,13 @@ Actually Oric 1, Oric Atmos and Microdisc are fully functional.
 
 ## About tape images
 
-  Loading from a `tap` file is **NOT** currently supported in this core. But you can convert `.tap` files to `dsk` with the [OricDSK Disc Manager Tool](https://github.com/teiram/oric-dsk-manager).
+  Loading from a `tap` file is currently supported in this core, but you can also convert `.tap` files to `dsk` with the [OricDSK Disc Manager Tool](https://github.com/teiram/oric-dsk-manager).
   Then convert the resulting "dsk" to the supported "edsk" (CPC format) with [HxCFloppyEmulator](https://hxc2001.com/download/floppy_drive_emulator/HxCFloppyEmulator_soft.zip) as explained above.
 
   Tape to dsk conversion is also possible with [tap2dsk](https://sourceforge.net/projects/euphorictools/files/disk%20image%20tools/Sedoric%20tool/) from
   the [Euphoric Tools](https://sourceforge.net/projects/euphorictools/) pack.
 
-  This core does support real-world (physical) Tape loading (via audio cable on the RX pin).
+  This core does also support real-world (physical) Tape loading (via audio cable on the RX pin).
 
 ## Troubleshooting disks
 
