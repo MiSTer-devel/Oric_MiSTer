@@ -138,13 +138,15 @@ ARCHITECTURE RTL OF oricatmos IS
 	SIGNAL VIA_DO : STD_LOGIC_VECTOR(7 DOWNTO 0);
 	-- Clavier : émulation par port PS2
 	SIGNAL KEY_ROW : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SIGNAL kbd_int : STD_LOGIC;
 	SIGNAL KEYB_RESETn : STD_LOGIC;
 	SIGNAL KEYB_NMIn : STD_LOGIC;
 
 	-- PSG
 	SIGNAL psg_bdir : STD_LOGIC;
 	SIGNAL psg_bc1 : STD_LOGIC;
-	SIGNAL ym_o_ioa : STD_LOGIC_VECTOR (7 DOWNTO 0);
+	SIGNAL psg_ioa_out : STD_LOGIC_VECTOR (7 DOWNTO 0);
+	SIGNAL psg_iob_out : STD_LOGIC_VECTOR (7 DOWNTO 0);
 	SIGNAL psg_sample_ok : STD_LOGIC;
 	-- ULA    
 	SIGNAL ula_phi2 : STD_LOGIC;
@@ -202,8 +204,8 @@ ARCHITECTURE RTL OF oricatmos IS
 			key_strobe : IN STD_LOGIC;
 			key_code : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 			col : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-			row : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-			ROWbit : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+			row_mask : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+			kbd_int : OUT STD_LOGIC;
 			swnmi : OUT STD_LOGIC;
 			swrst : OUT STD_LOGIC
 		);
@@ -373,9 +375,9 @@ BEGIN
       mix         => PSG_OUT,
 
       ioad        => "ZZZZZZZZ",
-      ioaq        => ym_o_ioa,
+      ioaq        => psg_ioa_out,
       iobd        => "ZZZZZZZZ",
-      iobq        => open,
+      iobq        => psg_iob_out,
 
       sel         => '1'
     );
@@ -389,9 +391,9 @@ BEGIN
 		key_extended => key_extended,
 		key_strobe => key_strobe,
 		key_code => key_code,
-		row => ym_o_ioa,
 		col => via_pb_out (2 DOWNTO 0),
-		ROWbit => KEY_ROW,
+		kbd_int => kbd_int,
+		row_mask => psg_ioa_out,
 		swnmi => swnmi,
 		swrst => swrst
 	);
@@ -454,8 +456,7 @@ BEGIN
 
 	via_pa_in <= (via_pa_out AND NOT via_pa_out_oe) OR (via_pa_in_from_psg AND via_pa_out_oe);
 	via_pb_in(2 DOWNTO 0) <= via_pb_out(2 DOWNTO 0);
-	via_pb_in(3) <= '0' WHEN ((KEY_ROW AND (ym_o_ioa XOR x"FF"))) = x"00" ELSE
-	'1';
+	via_pb_in(3) <= kbd_int;
 	via_pb_in(4) <= via_pb_out(4);
 	via_pb_in(5) <= 'Z';
 	via_pb_in(6) <= via_pb_out(6);
