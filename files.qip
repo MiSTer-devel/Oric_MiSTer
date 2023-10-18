@@ -5,6 +5,7 @@ set_global_assignment -name VERILOG_FILE rtl/cassette.v
 set_global_assignment -name VERILOG_FILE rtl/cas_sig_gen.v
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wd1793.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/keyboard.sv 
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/joystick.sv 
 set_global_assignment -name VHDL_FILE rtl/microdisc.vhd
 set_global_assignment -name VHDL_FILE rtl/rom/MICRODIS.vhd
 set_global_assignment -name VHDL_FILE rtl/rom/BASIC10.vhd

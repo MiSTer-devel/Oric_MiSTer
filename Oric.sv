@@ -231,6 +231,8 @@ localparam CONF_STR = {
 	"P1O[51:50],Tape Audio,Mute,Low,High;",
 	"P1O[52],Tape Input,File,ADC;",
 	"P1-;",
+	"P1O[55:54],Joystick Adapter,None,PASE,IJK;",
+	"P1-;",
 	"P1O[122:121],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"P1O[12:10],Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",
 	"P1O[16:15],Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
@@ -240,6 +242,7 @@ localparam CONF_STR = {
 	"h1O[4:3],ROM,Oric Atmos,Oric 1,Loadable Bios;",
 	
 	"-;",
+	"J,Fire;",
 	"R0,Reset & Apply;",
 	"V,v",`BUILD_DATE
 };
@@ -247,6 +250,8 @@ localparam CONF_STR = {
 wire [1:0] tapeVolume  = status[51:50];
 wire       tapeUseADC = status[52];
 wire       tapeRewind = status[53];
+wire [1:0] joystick_adapter = status[55:54];
+
 ///////////////////////////////////////////////////
 
 wire locked;
@@ -287,7 +292,8 @@ end
 
 wire  [10:0] ps2_key;
 
-wire  [15:0] joy;
+wire  [15:0] joystick_0;
+wire  [15:0] joystick_1;
 wire   [1:0] buttons;
 wire         forced_scandoubler;
 wire [127:0] status;
@@ -325,7 +331,8 @@ hps_io #(.CONF_STR(CONF_STR), .VDNUM(4)) hps_io
 
 	.ps2_key(ps2_key),
 
-	.joystick_0(joy),
+	.joystick_0(joystick_0),
+	.joystick_1(joystick_1),
 	.buttons(buttons),
 	.forced_scandoubler(forced_scandoubler),
 	.status(status),
@@ -448,8 +455,9 @@ oricatmos oricatmos
 	.ram_q            (ram_q),
 	.ram_oe           (),
 	.ram_we           (ram_we),
-	.joystick_0       (0),
-	.joystick_1       (0),
+	.joystick_adapter (joystick_adapter),
+	.joystick_0       (joystick_0),
+	.joystick_1       (joystick_1),
 	.fd_led           (led_disk),
 	.fdd_ready        (fdd_ready),
 	.fdd_busy         (fdd_busy),

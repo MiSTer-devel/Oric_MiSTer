@@ -118,24 +118,28 @@ always @(posedge clock, negedge reset)
 		endcase
 
 always @(*)
-	case(addr)
-		 0: q = a_period[ 7:0];
-		 1: q = { 4'd0, a_period[11:8] };
-		 2: q = b_period[ 7:0];
-		 3: q = { 4'd0, b_period[11:8] };
-		 4: q = c_period[ 7:0];
-		 5: q = { 4'd0, c_period[11:8] };
-		 6: q = { 3'd0, n_period };
-		 7: q = { b_data_io, a_data_io, c_mix_noise, b_mix_noise, a_mix_noise, c_enable, b_enable, a_enable };
-		 8: q = { 3'd0, a_mode, a_level };
-		 9: q = { 3'd0, b_mode, b_level };
-		10: q = { 3'd0, c_mode, c_level };
-		11: q = e_period[ 7:0];
-		12: q = e_period[15:8];
-		13: q = 8'b0; //{4'd0, e_continue, e_attack, e_alternate, e_hold };
-		14: q = a_data_io ? a_data : ioad;
-		15: q = b_data_io ? b_data : iobd;
-	endcase
+	if (!bdir && !bc1) begin
+		q = 8'bzzzzzzzz;
+	end else begin
+		case(addr)
+			 0: q = a_period[ 7:0];
+			 1: q = { 4'd0, a_period[11:8] };
+			 2: q = b_period[ 7:0];
+			 3: q = { 4'd0, b_period[11:8] };
+			 4: q = c_period[ 7:0];
+			 5: q = { 4'd0, c_period[11:8] };
+			 6: q = { 3'd0, n_period };
+			 7: q = { b_data_io, a_data_io, c_mix_noise, b_mix_noise, a_mix_noise, c_enable, b_enable, a_enable };
+			 8: q = { 3'd0, a_mode, a_level };
+			 9: q = { 3'd0, b_mode, b_level };
+			10: q = { 3'd0, c_mode, c_level };
+			11: q = e_period[ 7:0];
+			12: q = e_period[15:8];
+			13: q = 8'b0; //{4'd0, e_continue, e_attack, e_alternate, e_hold };
+			14: q = a_data_io ? a_data : ioad;
+			15: q = b_data_io ? b_data : iobd;
+		endcase
+	end
 
 //-------------------------------------------------------------------------------------------------
 
