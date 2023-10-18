@@ -79,6 +79,7 @@ ENTITY oricatmos IS
 		fdd_busy : OUT STD_LOGIC;
 		fdd_reset : IN STD_LOGIC;
 		fdd_layout : IN STD_LOGIC;
+		joystick_adapter : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 		joystick_0 : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 		joystick_1 : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 		pll_locked : IN STD_LOGIC;
@@ -138,13 +139,19 @@ ARCHITECTURE RTL OF oricatmos IS
 	SIGNAL VIA_DO : STD_LOGIC_VECTOR(7 DOWNTO 0);
 	-- Clavier : émulation par port PS2
 	SIGNAL KEY_ROW : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SIGNAL kbd_int : STD_LOGIC;
 	SIGNAL KEYB_RESETn : STD_LOGIC;
 	SIGNAL KEYB_NMIn : STD_LOGIC;
 
+	-- Joystick
+	SIGNAL via_pa_joy_value : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SIGNAL via_pa_joy_mask : STD_LOGIC_VECTOR(7 DOWNTO 0);
+	
 	-- PSG
 	SIGNAL psg_bdir : STD_LOGIC;
 	SIGNAL psg_bc1 : STD_LOGIC;
-	SIGNAL ym_o_ioa : STD_LOGIC_VECTOR (7 DOWNTO 0);
+	SIGNAL psg_ioa_out : STD_LOGIC_VECTOR (7 DOWNTO 0);
+	SIGNAL psg_iob_out : STD_LOGIC_VECTOR (7 DOWNTO 0);
 	SIGNAL psg_sample_ok : STD_LOGIC;
 	-- ULA    
 	SIGNAL ula_phi2 : STD_LOGIC;
@@ -193,6 +200,7 @@ ARCHITECTURE RTL OF oricatmos IS
 	SIGNAL PH2_3 : STD_LOGIC;
 	SIGNAL PH2_old : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL PH2_cntr : STD_LOGIC_VECTOR(4 DOWNTO 0);
+
 	COMPONENT keyboard
 		PORT (
 			clk_sys : IN STD_LOGIC;
@@ -202,10 +210,23 @@ ARCHITECTURE RTL OF oricatmos IS
 			key_strobe : IN STD_LOGIC;
 			key_code : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 			col : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-			row : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
-			ROWbit : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+			row_mask : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+			kbd_int : OUT STD_LOGIC;
 			swnmi : OUT STD_LOGIC;
 			swrst : OUT STD_LOGIC
+		);
+	END COMPONENT;
+
+	COMPONENT joystick
+		PORT (
+			clk_sys : IN STD_LOGIC;
+			joystick_0 : STD_LOGIC_VECTOR(7 DOWNTO 0);
+			joystick_1 : STD_LOGIC_VECTOR(7 DOWNTO 0);
+			adapter : STD_LOGIC_VECTOR(1 DOWNTO 0);
+			via_strobe : IN STD_LOGIC;
+			via_pa_in : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+			joy_value : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+			joy_mask : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
 		);
 	END COMPONENT;
 
@@ -373,9 +394,9 @@ BEGIN
       mix         => PSG_OUT,
 
       ioad        => "ZZZZZZZZ",
-      ioaq        => ym_o_ioa,
+      ioaq        => psg_ioa_out,
       iobd        => "ZZZZZZZZ",
-      iobq        => open,
+      iobq        => psg_iob_out,
 
       sel         => '1'
     );
@@ -389,11 +410,23 @@ BEGIN
 		key_extended => key_extended,
 		key_strobe => key_strobe,
 		key_code => key_code,
-		row => ym_o_ioa,
 		col => via_pb_out (2 DOWNTO 0),
-		ROWbit => KEY_ROW,
+		kbd_int => kbd_int,
+		row_mask => psg_ioa_out,
 		swnmi => swnmi,
 		swrst => swrst
+	);
+	
+	inst_joy : joystick
+	PORT MAP(
+		clk_sys => CLK_IN,
+		joystick_0 => joystick_0,
+		joystick_1 => joystick_1,
+		adapter => joystick_adapter,
+		via_strobe => via_pb_out(4),
+		via_pa_in => via_pa_out,
+		joy_mask => via_pa_joy_mask,
+		joy_value => via_pa_joy_value
 	);
 
 	KEYB_NMIn <= NOT swnmi;
@@ -452,10 +485,11 @@ BEGIN
 
 	);
 
-	via_pa_in <= (via_pa_out AND NOT via_pa_out_oe) OR (via_pa_in_from_psg AND via_pa_out_oe);
+
+	via_pa_in <= (((via_pa_joy_value AND via_pa_joy_mask) OR (via_pa_out_oe AND NOT via_pa_joy_mask) OR (via_pa_out AND NOT via_pa_out_oe AND NOT via_pa_joy_mask))) WHEN (via_cb2_out='0' AND psg_bdir='0') ELSE
+	             (((via_pa_joy_value AND via_pa_joy_mask) OR (via_pa_in_from_psg AND via_pa_out_oe AND NOT via_pa_joy_mask) OR (via_pa_out AND NOT via_pa_out_oe AND NOT via_pa_joy_mask)));
 	via_pb_in(2 DOWNTO 0) <= via_pb_out(2 DOWNTO 0);
-	via_pb_in(3) <= '0' WHEN ((KEY_ROW AND (ym_o_ioa XOR x"FF"))) = x"00" ELSE
-	'1';
+	via_pb_in(3) <= kbd_int;
 	via_pb_in(4) <= via_pb_out(4);
 	via_pb_in(5) <= 'Z';
 	via_pb_in(6) <= via_pb_out(6);
