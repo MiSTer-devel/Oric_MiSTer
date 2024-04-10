@@ -242,8 +242,8 @@ localparam CONF_STR = {
 	"h1O[4:3],ROM,Oric Atmos,Oric 1,Loadable Bios;",
 	
 	"-;",
-	"J,Fire;",
 	"R0,Reset & Apply;",
+	"J,Fire;",
 	"V,v",`BUILD_DATE
 };
 
