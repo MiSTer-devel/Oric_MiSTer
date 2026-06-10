@@ -10,9 +10,9 @@ communication between the emulated 6502 and the FPGA core.
 - `build.md` explains how to build the core with `tools/oric-build`, including
   Docker/Quartus prerequisites, compile-only and deploy modes, clean builds,
   debug macros, release artifact naming, and common build/deploy failures.
-- `sys_update.md` documents the single fork delta in `sys/hps_io.sv` (the
-  `fio_block` Pravetz mount-timing patch), the safe procedure for merging
-  upstream sys updates, and the long-term plan for running a fully stock sys.
+- `sys_update.md` documents the procedure for merging upstream sys updates
+  (sys/ is fully stock since 2026-06-10), the device test matrix, and the
+  history of the retired `fio_block` Pravetz mount-timing patch.
 - `tape_loading.md` is the short operational guide for tape loading. It
   explains Tape Load Ultra/Fast/Off, expected load behavior, and the menu
   steps for switching modes.

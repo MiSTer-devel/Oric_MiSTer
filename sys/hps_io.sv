@@ -625,14 +625,21 @@ always@(posedge clk_sys) begin : fio_block
 	reg [15:0] cmd;
 	reg  [2:0] cnt;
 	reg        has_cmd;
-	reg [26:0] addr;
 	reg        wr;
+	reg  [1:0] req_io;
+	reg        skip_add;
 
 	ioctl_rd <= 0;
 	ioctl_wr <= wr;
 	wr <= 0;
 
-	if(~fp_enable) has_cmd <= 0;
+	if(~fp_enable) begin
+		if(has_cmd && (cmd == FIO_FILE_TX)) begin
+			{ioctl_upload, ioctl_download} <= req_io;
+			skip_add <= req_io[0];
+		end
+		has_cmd <= 0;
+	end
 	else begin
 		if(io_strobe) begin
 
@@ -640,6 +647,7 @@ always@(posedge clk_sys) begin : fio_block
 				cmd <= io_din;
 				has_cmd <= 1;
 				cnt <= 0;
+				req_io <= 0;
 			end else begin
 
 				case(cmd)
@@ -661,44 +669,33 @@ always@(posedge clk_sys) begin : fio_block
 						begin
 							cnt <= cnt + 1'd1;
 							case(cnt)
-								0:	if(io_din[7:0] == 8'hAA) begin
+								0:	if(io_din[7:0]) begin
 										ioctl_addr <= 0;
-										ioctl_upload <= 1;
-										ioctl_rd <= 1;
-									end
-									else if(io_din[7:0]) begin
-										addr <= 0;
-										ioctl_download <= 1;
+										req_io <= (io_din[7:0] == 8'hAA) ? 2'b10 : 2'b01;
 									end
 									else begin
-										if(ioctl_download) ioctl_addr <= addr;
+										if(ioctl_download) ioctl_addr <= ioctl_addr + (WIDE ? 2'd2 : 2'd1);
 										ioctl_download <= 0;
 										ioctl_upload <= 0;
 									end
-
-								1: begin
-										ioctl_addr[15:0] <= io_din;
-										addr[15:0] <= io_din;
-									end
-
-								2: begin
-										ioctl_addr[26:16] <= io_din[10:0];
-										addr[26:16] <= io_din[10:0];
-									end
+								1: ioctl_addr[15:0]  <= io_din;
+								2: ioctl_addr[26:16] <= io_din[10:0];
 							endcase
 						end
 
 					FIO_FILE_TX_DAT:
-						if(ioctl_download) begin
-							ioctl_addr <= addr;
-							ioctl_dout <= io_din[DW:0];
-							wr   <= 1;
-							addr <= addr + (WIDE ? 2'd2 : 2'd1);
-						end
-						else begin
-							ioctl_addr <= ioctl_addr + (WIDE ? 2'd2 : 2'd1);
-							fp_dout <= ioctl_din;
-							ioctl_rd <= 1;
+						begin
+							if(!skip_add) ioctl_addr <= ioctl_addr + (WIDE ? 2'd2 : 2'd1);
+							skip_add <= 0;
+							
+							if(ioctl_download) begin
+								ioctl_dout <= io_din[DW:0];
+								wr <= 1;
+							end
+							else begin
+								fp_dout <= ioctl_din;
+								ioctl_rd <= 1;
+							end
 						end
 				endcase
 			end
