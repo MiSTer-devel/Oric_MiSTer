@@ -4,6 +4,9 @@ This repository contains an Oric-1, Oric Atmos, and Pravetz 8D FPGA core for
 the MiSTer platform. The current development focus is making the core practical
 for day-to-day software use: TAP loading, snapshot restore, ROM selection,
 Microdisc support, and MiSTer launcher files.
+The latest additions:
+- Pravetz 8D DOS 8D support for 5.25 floppy disks, compatible with the hardware for the Bulgarian clone
+- Fixed F11/F10 Reset/NMI buttons
 
 The core descends from the earlier MiST / SiDi Oric FPGA work. The original
 project notes and credits are preserved below, but this README now reflects the
@@ -32,6 +35,7 @@ Implemented and actively maintained:
   `tools/ss-convert.py` converts both ways for desktop interchange. See
   `docs/sna_support.md`.
 - MGL launcher samples for TAP files and snapshots.
+- Pravezt 8D DOS support
 
 ## Repository Layout
 
