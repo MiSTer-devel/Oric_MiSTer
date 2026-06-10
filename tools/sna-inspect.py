@@ -234,6 +234,7 @@ EXPECTED_SIZE = {
     b"ACI\x00":     5,
     b"AUX\x00":     5,
     b"TVA\x00":    39,
+    b"PAD\x00":     2,  # dword-alignment filler emitted by our SAVE
 }
 
 SEP = "=" * 60

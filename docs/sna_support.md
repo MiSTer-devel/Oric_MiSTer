@@ -8,8 +8,8 @@ signals, and the current implementation status.
 
 | Direction | State                                                                                  |
 | --------- | -------------------------------------------------------------------------------------- |
-| **LOAD**  | Working: RAM, CPU, AY register file + creg, VIA register file (12) + timers + IFR, ULA video mode. |
-| **SAVE**  | Not started.                                                                           |
+| **LOAD**  | Working: RAM, CPU, AY register file + creg, VIA register file (12) + timers + IFR, ULA video mode. Via OSD `.sna` load or **F5-F8** hotkey restore from MiSTer savestate slots. |
+| **SAVE**  | Implemented (pending on-device verification): **F1-F4** hotkeys save slots 1-4 through the MiSTer Main savestate framework. Emits `OSN + DATA(RAM) + CPU + AY + VIA + PAD`. |
 
 LOAD was built in three passes:
 
@@ -345,25 +345,92 @@ the 192 KiB cap; no compression needed.
   VIA O_IRQ_L line on the next cycle after resume; there's no benefit
   to forcing them.
 
-### SAVE direction (entirely unimplemented)
+## SAVE direction (savestates)
 
-LOAD only for now. SAVE would need:
+SAVE goes through the **MiSTer Main savestate framework** rather than
+`ioctl_upload`: the conf_str declares `SS3E000000:200000` (4 slots of
+2 MiB in DDR at 0x3E000000), Main pre-loads existing `.ss` files into
+the slots when a game loads, and writes a slot to
+`/media/fat/savestates/Oric/<game>_<slot>.ss` whenever its header
+change-counter increments. Each slot starts with the 8-byte Main
+header — u32 LE change counter, then u32 LE payload size in dwords —
+followed by the payload, which for this core is a plain Oricutron
+`.sna` block container. `tools/ss-convert.py` converts both ways
+(strip/prepend the header; pad with a `PAD\0` block since Oricutron's
+block walker rejects bare trailing bytes).
 
-- An `ioctl_upload` path (the framework supports it — see
-  `sys/hps_io.sv`).
-- Reverse plumbing: outputs from T65/VIA/AY back up through oricatmos.
-  T65's `Regs` output is wired but currently unused; m6522 and psg
-  don't expose internal registers as outputs and would need new ports.
-- Same on-FPGA state machine logic as LOAD but in reverse: read from
-  RAM/registers, frame as Oricutron blocks, emit one byte per
-  `ioctl_din` cycle.
+### Hotkeys
+
+`rtl/savestate_hotkeys.v`: **F1-F4** save to slots 1-4, **F5-F8**
+restore from slots 1-4 (the Oric keyboard only uses F10/F11). Gated by
+`allow_ss` in `Oric.sv`: something must be loaded (TAP, SNA or disk)
+and no download/reset/loader may be active. OSD info toasts ("Saved
+state N" / "Restored state N" / "Slot is empty") confirm each action.
+
+### Engine (`rtl/snap_ss.v`)
+
+- **SAVE**: reads the slot's old counter, requests an
+  instruction-boundary CPU stall (`save_halt`/`save_halted` handshake
+  in `oricatmos.vhd` — the Rdy stall engages only while T65 is parked
+  at an opcode fetch with `Sync='1'`, so the captured PC is the exact
+  resume address), latches the whole VIA state bus in one cycle
+  (`m6522.snap_q[136:0]` — tear-free even though the timers keep
+  running), walks the 15 AY registers (`psg.snap_rd_*`, static while
+  the CPU is halted), then streams the block container into DDR at
+  one byte per 3 cycles (the registered spram mux + BRAM output make
+  RAM reads 2-cycle latent) packed into 64-bit beats. The header is
+  written **last** so Main never snapshots a half-written slot.
+  ~12 ms total; the machine resumes as if RDY had been held.
+  During the dump the ULA keeps scanning the hijacked RAM port and
+  interprets dump bytes as serial attributes — ink/paper/style reset
+  per line, but a stray `$18-$1F` byte latches a wrong **mode** that
+  persists on games that set their mode only once. The engine
+  therefore writes the captured mode back into the ULA during its
+  drain phase, mirroring what `snap_loader` does after a restore.
+- **LOAD**: validates the slot header (size in (0, 192 KiB] — a range
+  check, not exact-match, so converted Oricutron snapshots of any size
+  load), DMAs the payload into the shared 192 KiB filecache and
+  retriggers `snap_loader` via its `start` input — the apply path is
+  identical to an OSD `.sna` load, including PC preload and ULA mode
+  restore. Hotkey loads clobber the shared TAP/SNA cache, same as an
+  OSD `.sna` load.
+
+### Emitted values (SAVE)
+
+Blocks in canonical order `OSN, DATA, CPU, AY, VIA, PAD` — payload
+82204 bytes (20551 dwords), `.ss` file 82212 bytes.
+
+- **OSN**: machine type from the ROM selection (Atmos→2, Oric-1→0,
+  Pravetz→4, loadable BIOS→2; Oricutron's `memsize` is 81920 for all
+  three, so `DATA` is always 64 KiB RAM + 16 KiB zero overlay pad),
+  overclock mult=1, vsync=272 (matches real Oricutron saves), romon=1,
+  vid_mode from the ULA's `lREG_MODE` **latched once per frame at
+  scanline 100** — the live register flips to text every frame while
+  the bottom three text rows (and vblank) scan out, so sampling it at
+  a random beam position broke hires restores; everything else 0.
+- **CPU**: PC/lastpc/calcpc = T65 `Regs` PC, A/X/Y/S/P (P bit 5 forced
+  1), `irq` = IFR bit 7 so a pending VIA IRQ fires on resume in
+  Oricutron; cycles/nmi/scratch = 0.
+- **AY**: creg + 15 registers, plus the derived fields Oricutron uses
+  directly until the next register write: toneper = period×8,
+  noiseper = period×8, envper = period×16, tonebit/noisebit from
+  reg 7, vol = voltab[level or envelope level] (16-entry `voltab/4`
+  LUT). Dynamic phase counters (ct/ctn/cte/envpos/LFSR) stay 0 — the
+  same [v4] class our LOAD skips.
+- **VIA**: full register file + live T1C/T2C + t1run/t2run + IFR.
+  Input shadows (IRB/IRA/latches) and CA/CB line states are 0 (the
+  fields LOAD also skips). **irqbit = 1 (`IRQF_VIA`)** — Oricutron
+  consumes this on load; emitting 0 would permanently detach VIA IRQs
+  from the emulated CPU.
+- **PAD** (size 2): dword alignment as a real block — Oricutron skips
+  unknown tags but rejects bare trailing bytes and size-0 blocks.
 
 ### Other Oricutron blocks we don't emit
 
-If/when SAVE happens, we'll likely emit only `OSN+DATA(RAM)`, `CPU`,
-`AY`, `VIA` — the same minimal set we honour on LOAD. The rest
-(`TAP`, `PCH`, `SYR`, disk blocks, Telestrat blocks) is irrelevant or
-out of scope. Oricutron loads files with missing optional blocks
+`TAP`, `PCH`, `SYR`, disk blocks (`MDC`/`WDD`/`JSM`/`PRV`/`DSK`),
+Telestrat blocks: irrelevant or out of scope (disk/overlay state is a
+documented v2 candidate — snapshots taken mid-disk-I/O will not
+restore FDC state). Oricutron loads files with missing optional blocks
 without complaint.
 
 ## Tooling
@@ -417,9 +484,43 @@ python3 tools/sna-inspect.py path/to/snapshot.sna
    but graphics stay in the wrong mode because the ULA waits for a
    scanned mode attribute. Loading `lREG_MODE` during `S_DRAIN` restores
    hires + 50 Hz before execution continues. **DONE.**
-9. **SAVE round-trip** — save snapshot from MiSTer, load it in
-   Oricutron (and the reverse), verify the program continues running
-   visually/audibly. **NOT DONE** — SAVE direction not yet implemented.
+9. **SAVE hardware tests** (2026-06-10 build) — **DONE**:
+   - F1 on a running game produced `<game>_1.ss` (82,212 bytes, exact
+     predicted size) in `/media/fat/savestates/Oric/` within a second —
+     Main's counter-watch picked up the header write.
+   - F5 restored the saved state exactly and the machine kept running
+     (Scuba Dive: game playable after restore).
+   - Oricutron `pulsoids.sna` (148 KB) converted with
+     `ss-convert.py to-ss`, dropped in as slot 2, loaded via F6 —
+     exercises the loose size validation, the large DDR→filecache DMA
+     and hires ULA mode restore.
+   - F7 on an empty slot: rejected safely, machine untouched.
+   - Xenon3 F1→F5 mid-music round trip: resumes with music; the saved
+     file decodes with live `T1C` mid-count vs the `$2710` latch,
+     t1run/t2run set, ACR=$40, irqbit=1, and the AY derived fields
+     (toneper ×8, envper ×16, voltab vols, interleaved
+     tonebit/noisebit/vol — a field-order bug found and fixed on the
+     first hardware save) all correct.
+10. **Hires save bug + fix** (2026-06-10) — **DONE**: live-sampling
+   `lREG_MODE` captured `vid_mode = text` when F1 landed while a
+   mode-switching game had the register in its text window, restoring
+   to a text screen. Fixed by latching the mode at scanline 100.
+   Verified: 4 Pulsoids saves at random moments all capture the hires
+   bit and restore in hires. Note the low bits (50/60 Hz, unused bit 0)
+   still vary save-to-save on Pulsoids — the game itself rewrites mode
+   attributes per frame (raster tricks), so each captured value is one
+   the game wrote; it re-asserts its attributes within a frame of
+   restore and all variants restore correctly.
+11. **Save-side video corruption + fix** (2026-06-10) — **DONE**:
+   taking a save could break the live video (until a restore fixed
+   it): the ULA scanned the RAM-dump bytes as attributes and could
+   latch a wrong mode. Fixed by writing the captured mode back via
+   `SNAP_MODE_WE` during the save drain. Verified on Gravitor
+   in-game: repeated F1 saves leave the picture intact.
+12. **Desktop Oricutron load of a MiSTer save** — convert with
+   `ss-convert.py to-sna` and open in Oricutron. **PENDING** — format
+   verified byte-by-byte against `snapshot.c` and `sna-inspect.py`,
+   but not yet opened in the desktop GUI.
 
 ## References
 

@@ -4,6 +4,9 @@ set_global_assignment -name VERILOG_FILE rtl/spram.v
 set_global_assignment -name VERILOG_FILE rtl/cassette.v
 set_global_assignment -name VERILOG_FILE rtl/cas_sig_gen.v
 set_global_assignment -name VERILOG_FILE rtl/snap_loader.v
+set_global_assignment -name VERILOG_FILE rtl/snap_ss.v
+set_global_assignment -name VERILOG_FILE rtl/savestate_hotkeys.v
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/ddram.sv
 set_global_assignment -name VERILOG_FILE rtl/cload_patch_rom.v
 set_global_assignment -name VERILOG_FILE rtl/tap_segment_loader.v
 set_global_assignment -name VERILOG_FILE rtl/tap_byte_streamer.v

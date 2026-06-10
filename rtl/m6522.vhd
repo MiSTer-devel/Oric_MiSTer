@@ -118,7 +118,16 @@ entity M6522 is
       -- IFR restore: bit 6 = t1_irq, 5 = t2_irq, 4 = cb1, 3 = cb2,
       -- 2 = sr, 1 = ca1, 0 = ca2. Bit 7 is computed from the others.
       snap_ifr_we           : in    std_logic := '0';
-      snap_ifr_data         : in    std_logic_vector(6 downto 0) := (others => '0')
+      snap_ifr_data         : in    std_logic_vector(6 downto 0) := (others => '0');
+
+      -- Snapshot state readout (consumed by Oric.sv snap_ss SAVE engine,
+      -- latched there in a single clk cycle so the captured fields are
+      -- mutually consistent even though the timers keep running):
+      --   [7:0] IFR  [15:8] ORB  [23:16] ORA  [31:24] DDRA  [39:32] DDRB
+      --   [47:40] T1L_L  [55:48] T1L_H  [71:56] T1C  [79:72] T2L_L
+      --   [87:80] T2L_H  [103:88] T2C  [111:104] SR  [119:112] ACR
+      --   [127:120] PCR  [134:128] IER  [135] t1run  [136] t2run
+      snap_q                : out   std_logic_vector(136 downto 0)
    );
 end;
 
@@ -253,6 +262,25 @@ begin
          cs <= '1';
       end if;
    end process;
+
+   -- Snapshot state readout: pure wiring, no behavioral change.
+   snap_q(7 downto 0)     <= r_ifr;
+   snap_q(15 downto 8)    <= r_orb;
+   snap_q(23 downto 16)   <= r_ora;
+   snap_q(31 downto 24)   <= r_ddra;
+   snap_q(39 downto 32)   <= r_ddrb;
+   snap_q(47 downto 40)   <= r_t1l_l;
+   snap_q(55 downto 48)   <= r_t1l_h;
+   snap_q(71 downto 56)   <= t1c;
+   snap_q(79 downto 72)   <= r_t2l_l;
+   snap_q(87 downto 80)   <= r_t2l_h;
+   snap_q(103 downto 88)  <= t2c;
+   snap_q(111 downto 104) <= r_sr;
+   snap_q(119 downto 112) <= r_acr;
+   snap_q(127 downto 120) <= r_pcr;
+   snap_q(134 downto 128) <= r_ier;
+   snap_q(135)            <= '1' when t1c_active else '0';
+   snap_q(136)            <= '1' when t2c_active else '0';
 
    -- peripheral control reg (pcr)
    -- 0      ca1 interrupt control (0 +ve edge, 1 -ve edge)

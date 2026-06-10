@@ -88,6 +88,27 @@ Example:
 python3 tools/sna-inspect.py games/Oric/snapshots/example.sna
 ```
 
+## Savestate conversion
+
+- `ss-convert.py` converts between MiSTer savestates (`.ss`, produced by the
+  F1-F4 hotkeys, stored in `/media/fat/savestates/Oric/`) and Oricutron
+  `.sna` snapshots. A `.ss` file is a `.sna` container prefixed with the
+  8-byte MiSTer Main header (u32 LE change counter + u32 LE payload size in
+  dwords).
+- `to-sna` strips the header so the snapshot loads in desktop Oricutron;
+  `to-ss` pads the container to a dword boundary with a `PAD` block and
+  prepends the header so an Oricutron save can be restored on the MiSTer
+  with F5-F8; `inspect` decodes the header and runs `sna-inspect.py` on the
+  embedded payload.
+
+Example:
+
+```sh
+python3 tools/ss-convert.py to-sna "savestates/Oric/game_1.ss" game.sna
+python3 tools/ss-convert.py to-ss game.sna "savestates/Oric/game_1.ss"
+python3 tools/ss-convert.py inspect "savestates/Oric/game_1.ss"
+```
+
 ## Notes
 
 - The Python tools use only the standard library.
