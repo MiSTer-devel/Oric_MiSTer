@@ -31,8 +31,8 @@ Implemented and actively maintained:
 - Oricutron-compatible `.sna` snapshot loading for RAM, CPU, AY and VIA state.
 - MGL launcher samples for TAP files and snapshots.
 - Pravezt 8D DOS support
+- Savestates support. `F1-F4` saves a state, `F5-F8` loads it. Requires a game to be loaded as tape. No disk savestate support yet
 
-Snapshot SAVE is not implemented.
 
 ## Repository Layout
 
