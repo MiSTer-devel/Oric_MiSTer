@@ -216,6 +216,7 @@ localparam CONF_STR = {
 	"FS1,TAP,Load TAP file;",
 	"FS4,SNA,Load Snapshot;",
 	"h0T[53],Rewind Tape;",
+	"-,F1-F4 Save / F5-F8 Restore State;",
 	"-;",
 	"h6S0,NIBDSKDO ,Mount Drive A:;",
 	"h6S1,NIBDSKDO ,Mount Drive B:;",
