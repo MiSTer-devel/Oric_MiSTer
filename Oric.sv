@@ -609,8 +609,10 @@ oricatmos oricatmos
 	.ay_snap_data     (ay_snap_data),
 	.ay_snap_creg_we  (ay_snap_creg_we),
 	.ay_snap_creg     (ay_snap_creg),
-	.ula_snap_mode_we (ula_snap_mode_we),
-	.ula_snap_mode    (ula_snap_mode),
+	// mode write-back is shared by the loader (after restore) and the
+	// save engine (after the RAM dump) — never active simultaneously
+	.ula_snap_mode_we (ula_snap_mode_we | ss_ula_mode_we),
+	.ula_snap_mode    (ula_snap_mode_we ? ula_snap_mode : ss_ula_mode),
 	.save_halt        (ss_save_halt),
 	.save_halted      (ss_save_halted),
 	.cpu_regs_q       (cpu_regs_q),
@@ -967,6 +969,8 @@ wire         ss_ddr_req, ss_ddr_rnw, ss_ddr_ready;
 wire   [7:0] ss_ddr_be;
 wire   [7:0] ss_info;
 wire         ss_info_req;
+wire         ss_ula_mode_we;
+wire   [2:0] ss_ula_mode;
 
 savestate_hotkeys savestate_hotkeys (
 	.clk     (clk_sys),
@@ -994,6 +998,8 @@ snap_ss snap_ss (
 	.ay_env_q      (ay_snap_env_q),
 	.ula_mode_q    (ula_snap_mode_q),
 	.rom_sel_q     (rom_sel),
+	.ula_mode_we   (ss_ula_mode_we),
+	.ula_mode      (ss_ula_mode),
 	.save_active   (ss_save_active),
 	.save_ram_addr (ss_save_ram_addr),
 	.ram_q         (ram_q),

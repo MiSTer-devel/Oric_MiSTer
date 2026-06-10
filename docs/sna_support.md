@@ -381,6 +381,12 @@ state N" / "Restored state N" / "Slot is empty") confirm each action.
   RAM reads 2-cycle latent) packed into 64-bit beats. The header is
   written **last** so Main never snapshots a half-written slot.
   ~12 ms total; the machine resumes as if RDY had been held.
+  During the dump the ULA keeps scanning the hijacked RAM port and
+  interprets dump bytes as serial attributes — ink/paper/style reset
+  per line, but a stray `$18-$1F` byte latches a wrong **mode** that
+  persists on games that set their mode only once. The engine
+  therefore writes the captured mode back into the ULA during its
+  drain phase, mirroring what `snap_loader` does after a restore.
 - **LOAD**: validates the slot header (size in (0, 192 KiB] — a range
   check, not exact-match, so converted Oricutron snapshots of any size
   load), DMAs the payload into the shared 192 KiB filecache and
@@ -505,7 +511,13 @@ python3 tools/sna-inspect.py path/to/snapshot.sna
    attributes per frame (raster tricks), so each captured value is one
    the game wrote; it re-asserts its attributes within a frame of
    restore and all variants restore correctly.
-11. **Desktop Oricutron load of a MiSTer save** — convert with
+11. **Save-side video corruption + fix** (2026-06-10) — **DONE**:
+   taking a save could break the live video (until a restore fixed
+   it): the ULA scanned the RAM-dump bytes as attributes and could
+   latch a wrong mode. Fixed by writing the captured mode back via
+   `SNAP_MODE_WE` during the save drain. Verified on Gravitor
+   in-game: repeated F1 saves leave the picture intact.
+12. **Desktop Oricutron load of a MiSTer save** — convert with
    `ss-convert.py to-sna` and open in Oricutron. **PENDING** — format
    verified byte-by-byte against `snapshot.c` and `sna-inspect.py`,
    but not yet opened in the desktop GUI.

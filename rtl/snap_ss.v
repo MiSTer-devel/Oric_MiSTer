@@ -52,6 +52,14 @@ module snap_ss (
 	input       [2:0] ula_mode_q,
 	input       [1:0] rom_sel_q,     // 0=Atmos 1=Oric-1 2=Pravetz 3=loadable
 
+	// ULA mode write-back after SAVE: while the RAM dump hijacks the
+	// shared RAM port, the ULA keeps scanning and interprets the dump
+	// bytes as serial attributes — a stray $18-$1F byte latches a wrong
+	// video mode that persists on games that only set their mode once.
+	// Restore the captured mode during the drain, like snap_loader does.
+	output reg        ula_mode_we,
+	output      [2:0] ula_mode,
+
 	// main RAM read through the Oric.sv spram mux (2-cycle latency)
 	output            save_active,
 	output     [15:0] save_ram_addr,
@@ -160,6 +168,8 @@ endfunction
 wire [15:0] vol0 = voltab(c_ay[8][4]  ? c_env : c_ay[8][3:0]);
 wire [15:0] vol1 = voltab(c_ay[9][4]  ? c_env : c_ay[9][3:0]);
 wire [15:0] vol2 = voltab(c_ay[10][4] ? c_env : c_ay[10][3:0]);
+
+assign ula_mode = c_mode;
 
 // ---------------- byte emitter ----------------
 //
@@ -358,6 +368,7 @@ always @(posedge clk_sys) begin
 		snap_end_we  <= 1'b0;
 		loader_start <= 1'b0;
 		ss_info_req  <= 1'b0;
+		ula_mode_we  <= 1'b0;
 	end
 	else begin
 		ddr_req      <= 1'b0;
@@ -365,6 +376,7 @@ always @(posedge clk_sys) begin
 		snap_end_we  <= 1'b0;
 		loader_start <= 1'b0;
 		ss_info_req  <= 1'b0;
+		ula_mode_we  <= 1'b0;
 
 		case (state)
 			S_IDLE: begin
@@ -482,8 +494,11 @@ always @(posedge clk_sys) begin
 			end
 
 			// keep the CPU stalled while ram_q/cpu_di settle back to
-			// mem[PC] — same margin as snap_loader S_DRAIN
+			// mem[PC] — same margin as snap_loader S_DRAIN. Also write
+			// the captured video mode back into the ULA: the dump bytes
+			// it scanned during the save may have latched a wrong mode.
 			SV_DRAIN: begin
+				ula_mode_we <= 1'b1;
 				drain_cnt <= drain_cnt + 11'd1;
 				if (drain_cnt == 11'd1023) begin
 					save_halt   <= 1'b0;
