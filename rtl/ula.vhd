@@ -101,6 +101,7 @@ port (
 
 	SNAP_MODE_WE : in  std_logic := '0';
 	SNAP_MODE    : in  std_logic_vector(2 downto 0) := (others => '0');
+	SNAP_MODE_Q  : out std_logic_vector(2 downto 0);
 
 	-- DRAM
 --	AD_RAM     :   out std_logic_vector( 7 downto 0); -- ADDRESS BUS for dynamic ram  -- pin 38,36,37,4,3,2,40,39
@@ -193,6 +194,7 @@ architecture RTL of ula is
 	signal ph           : std_logic_vector( 2 downto 0); -- phases
 
 	signal lCTR_FLASH   : std_logic_vector( 4 downto 0);
+	signal lSNAP_MODE_FRAME : std_logic_vector( 2 downto 0) := "010";
 	signal lVBLANKn     : std_logic;
 	signal lHBLANKn     : std_logic;
 
@@ -472,7 +474,24 @@ begin
 	lDBLHGT_SEL <= lREG_STYLE(1); -- Character type select: 0=Standard  1=Double
 	lFLASH_SEL  <= lREG_STYLE(2); -- Flash select         : 0=Steady    1=Flashing
 	lFREQ_SEL   <= lREG_MODE(1);  -- Frequency select     : 0=60Hz      1=50Hz
-	lHIRES_SEL  <= lREG_MODE(2);  -- Mode Select          : 0=Text      1=Hires 
+	lHIRES_SEL  <= lREG_MODE(2);  -- Mode Select          : 0=Text      1=Hires
+
+	-- Snapshot readout: lREG_MODE is exactly the OSN+16 vid_mode encoding,
+	-- but it cannot be sampled live — on a hires screen the ULA flips to
+	-- text every frame while scanning the bottom three text rows and stays
+	-- text through vblank until the next hires attribute. Latch the mode
+	-- once per frame at scanline 100 (mid hires region, past that line's
+	-- attribute bytes) so a save taken at any beam position records the
+	-- screen's dominant mode.
+	u_SNAP_MODE: process(CLK_24)
+	begin
+		if rising_edge(CLK_24) then
+			if (lCTR_V = 100) and (lCTR_H = 45) then
+				lSNAP_MODE_FRAME <= lREG_MODE;
+			end if;
+		end if;
+	end process;
+	SNAP_MODE_Q <= lSNAP_MODE_FRAME;
 
 	-- Output signal for text/hires mode decode
 	HIRES_DEC   <= (lHIRES_SEL  and (not lFORCETXT));

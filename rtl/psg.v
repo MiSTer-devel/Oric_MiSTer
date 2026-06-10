@@ -31,7 +31,15 @@ module psg
 	input  wire[ 3:0] snap_addr,
 	input  wire[ 7:0] snap_data,
 	input  wire       snap_creg_we,
-	input  wire[ 3:0] snap_creg
+	input  wire[ 3:0] snap_creg,
+
+	// Snapshot register readout (consumed by the snap_ss SAVE engine).
+	// Unlike the CPU-visible q mux: reg 13 returns the real envelope
+	// shape bits and regs 14/15 the raw port data registers.
+	input  wire[ 3:0] snap_rd_addr,
+	output reg [ 7:0] snap_rd_q,
+	output wire[ 3:0] snap_creg_q,
+	output wire[ 3:0] snap_env_q
 );
 //-------------------------------------------------------------------------------------------------
 
@@ -170,6 +178,28 @@ always @(*)
 			15: q = b_data_io ? b_data : iobd;
 		endcase
 	end
+
+always @(*)
+	case(snap_rd_addr)
+		 0: snap_rd_q = a_period[ 7:0];
+		 1: snap_rd_q = { 4'd0, a_period[11:8] };
+		 2: snap_rd_q = b_period[ 7:0];
+		 3: snap_rd_q = { 4'd0, b_period[11:8] };
+		 4: snap_rd_q = c_period[ 7:0];
+		 5: snap_rd_q = { 4'd0, c_period[11:8] };
+		 6: snap_rd_q = { 3'd0, n_period };
+		 7: snap_rd_q = { b_data_io, a_data_io, c_mix_noise, b_mix_noise, a_mix_noise, c_enable, b_enable, a_enable };
+		 8: snap_rd_q = { 3'd0, a_mode, a_level };
+		 9: snap_rd_q = { 3'd0, b_mode, b_level };
+		10: snap_rd_q = { 3'd0, c_mode, c_level };
+		11: snap_rd_q = e_period[ 7:0];
+		12: snap_rd_q = e_period[15:8];
+		13: snap_rd_q = { 4'd0, e_continue, e_attack, e_alternate, e_hold };
+		14: snap_rd_q = a_data;
+		15: snap_rd_q = b_data;
+	endcase
+
+assign snap_creg_q = addr;
 
 //-------------------------------------------------------------------------------------------------
 
@@ -314,6 +344,8 @@ assign   c = (c_enable | c_ff) & (c_mix_noise | n_bit) ?  c_mode ? dac[e_level] 
 
 assign  ioaq = a_data;
 assign  iobq = b_data;
+
+assign snap_env_q = e_level;
 //end
 
 assign mix = { 2'd0, a }+{ 2'd0, b }+{ 2'd0, c };

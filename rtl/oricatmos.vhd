@@ -130,6 +130,20 @@ ENTITY oricatmos IS
 		ula_snap_mode_we : IN STD_LOGIC := '0';
 		ula_snap_mode   : IN STD_LOGIC_VECTOR(2 DOWNTO 0) := (OTHERS => '0');
 
+		-- Snapshot SAVE support (consumed by Oric.sv snap_ss engine):
+		-- save_halt requests a CPU stall at the next instruction
+		-- boundary (T65 Sync); save_halted confirms it. The readout
+		-- ports expose live CPU/VIA/AY/ULA state for capture.
+		save_halt       : IN  STD_LOGIC := '0';
+		save_halted     : OUT STD_LOGIC;
+		cpu_regs_q      : OUT STD_LOGIC_VECTOR(63 DOWNTO 0);
+		via_snap_q      : OUT STD_LOGIC_VECTOR(136 DOWNTO 0);
+		ay_snap_rd_addr : IN  STD_LOGIC_VECTOR(3 DOWNTO 0) := (OTHERS => '0');
+		ay_snap_rd_q    : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+		ay_snap_creg_q  : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+		ay_snap_env_q   : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+		ula_snap_mode_q : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+
 		-- Tape-load live ROM patch: when patch_active='1', the CPU
 		-- reads patch_data instead of the selected ROM source.
 		patch_active    : IN  STD_LOGIC := '0';
@@ -232,6 +246,10 @@ ARCHITECTURE RTL OF oricatmos IS
 
 	SIGNAL swnmi : STD_LOGIC;
 	SIGNAL swrst : STD_LOGIC;
+
+	-- Snapshot SAVE: instruction-boundary CPU stall
+	SIGNAL cpu_sync : STD_LOGIC;
+	SIGNAL save_halted_i : STD_LOGIC := '0';
 
 	-- Disk controller
 	SIGNAL cont_MAPn : STD_LOGIC := '1';
@@ -339,7 +357,11 @@ COMPONENT psg
 			snap_addr    : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
 			snap_data    : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
 			snap_creg_we : IN STD_LOGIC;
-			snap_creg    : IN STD_LOGIC_VECTOR(3 DOWNTO 0)
+			snap_creg    : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+			snap_rd_addr : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+			snap_rd_q    : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+			snap_creg_q  : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+			snap_env_q   : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
 );
 END COMPONENT;
 
@@ -391,7 +413,7 @@ BEGIN
 			Res_n => cont_RESETn,
 			Enable => ENA_1MHZ,
 			Clk => CLK_IN,
-			Rdy => NOT cpu_halt,
+			Rdy => NOT (cpu_halt OR save_halted_i),
 			Abort_n => '1',
 			IRQ_n => cpu_irq AND cont_irq, -- Via and disk controller
 			NMI_n => KEYB_NMIn,
@@ -400,10 +422,27 @@ BEGIN
 			A => cpu_ad,
 			DI => cpu_di,
 			DO => cpu_do,
-			Regs => OPEN,
+			Sync => cpu_sync,
+			Regs => cpu_regs_q,
 			Regs_set => cpu_regs_set,
 			Regs_set_we => cpu_regs_set_we
 		);
+
+	-- Snapshot SAVE halt: engage the Rdy stall only while T65 is parked
+	-- at an opcode fetch (Sync='1', MCycle 000) and not on the very edge
+	-- that completes the fetch (ENA_1MHZ='1'), so the captured PC is the
+	-- exact resume address. Releasing save_halt drops the stall.
+	p_save_halt : PROCESS (CLK_IN)
+	BEGIN
+		IF rising_edge(CLK_IN) THEN
+			IF save_halt = '0' THEN
+				save_halted_i <= '0';
+			ELSIF cpu_sync = '1' AND ENA_1MHZ = '0' THEN
+				save_halted_i <= '1';
+			END IF;
+		END IF;
+	END PROCESS;
+	save_halted <= save_halted_i;
 
 	ram_ad <= ula_AD_SRAM WHEN (ula_PHI2 = '0') ELSE
 		cpu_ad(15 DOWNTO 0);
@@ -476,6 +515,7 @@ BEGIN
 			CSRAMn => ula_CSRAMn,
 			SNAP_MODE_WE => ula_snap_mode_we,
 			SNAP_MODE => ula_snap_mode,
+			SNAP_MODE_Q => ula_snap_mode_q,
 			R => VIDEO_R,
 			G => VIDEO_G,
 			B => VIDEO_B,
@@ -534,7 +574,8 @@ BEGIN
 			snap_t1_active   => via_snap_t1_active,
 			snap_t2_active   => via_snap_t2_active,
 			snap_ifr_we      => via_snap_ifr_we,
-			snap_ifr_data    => via_snap_ifr_data
+			snap_ifr_data    => via_snap_ifr_data,
+			snap_q           => via_snap_q
 		);
 
 
@@ -564,7 +605,11 @@ BEGIN
       snap_addr    => ay_snap_addr,
       snap_data    => ay_snap_data,
       snap_creg_we => ay_snap_creg_we,
-      snap_creg    => ay_snap_creg
+      snap_creg    => ay_snap_creg,
+      snap_rd_addr => ay_snap_rd_addr,
+      snap_rd_q    => ay_snap_rd_q,
+      snap_creg_q  => ay_snap_creg_q,
+      snap_env_q   => ay_snap_env_q
     );
 
 	

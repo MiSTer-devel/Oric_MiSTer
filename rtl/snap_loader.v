@@ -26,6 +26,7 @@ module snap_loader (
 	input             ioctl_download,
 	input             ioctl_downlD,
 	input             load_sna,           // ioctl_index == 4
+	input             start,              // hotkey retrigger (snap_ss LOAD)
 	input      [17:0] snap_end,
 	output reg [17:0] snap_cache_addr,
 	input       [7:0] snap_cache_q,
@@ -68,7 +69,7 @@ module snap_loader (
 	output reg  [2:0] ula_snap_mode
 );
 
-wire snap_trigger = ioctl_downlD && ~ioctl_download && load_sna;
+wire snap_trigger = (ioctl_downlD && ~ioctl_download && load_sna) || start;
 
 localparam S_IDLE             = 5'd0,
            S_INIT             = 5'd1,

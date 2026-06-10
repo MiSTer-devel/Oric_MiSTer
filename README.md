@@ -26,9 +26,12 @@ Implemented and actively maintained:
   - `Off`: original cassette/VIA behavior.
 - Autoload TAP setting for resetting into `CLOAD""` after a TAP is selected.
 - Oricutron-compatible `.sna` snapshot loading for RAM, CPU, AY and VIA state.
+- Savestate hotkeys via the MiSTer Main savestate framework: **F1-F4** save
+  to slots 1-4, **F5-F8** restore (files in `/media/fat/savestates/Oric/`,
+  named after the loaded game). The `.ss` payload is an Oricutron `.sna` —
+  `tools/ss-convert.py` converts both ways for desktop interchange. See
+  `docs/sna_support.md`.
 - MGL launcher samples for TAP files and snapshots.
-
-Snapshot SAVE is not implemented.
 
 ## Repository Layout
 

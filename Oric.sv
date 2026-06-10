@@ -180,13 +180,8 @@ assign USER_OUT = '1;
 assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {SDRAM_DQ, SDRAM_A, SDRAM_BA, SDRAM_CLK, SDRAM_CKE, SDRAM_DQML, SDRAM_DQMH, SDRAM_nWE, SDRAM_nCAS, SDRAM_nRAS, SDRAM_nCS} = 'Z;
-assign DDRAM_CLK      = 0;
-assign DDRAM_BURSTCNT = 0;
-assign DDRAM_ADDR     = 0;
-assign DDRAM_RD       = 0;
-assign DDRAM_DIN      = 0;
-assign DDRAM_BE       = 0;
-assign DDRAM_WE       = 0;
+// DDRAM is used as the MiSTer Main savestate buffer (see snap_ss below)
+assign DDRAM_CLK = clk_sys;
 
 assign LED_USER    = ioctl_download | fdd_busy | tape_adc_act | led_user_pokeable;
 assign LED_DISK    = led_disk;
@@ -217,7 +212,7 @@ video_freak video_freak
 
 `include "build_id.v"
 localparam CONF_STR = {
-	"Oric;;",
+	"Oric;SS3E000000:200000;",
 	"FS1,TAP,Load TAP file;",
 	"FS4,SNA,Load Snapshot;",
 	"h0T[53],Rewind Tape;",
@@ -260,6 +255,16 @@ localparam CONF_STR = {
 	"-;",
 	"R0,Reset & Apply;",
 	"J,Fire;",
+	"I,",
+	"Saved state 1,",
+	"Saved state 2,",
+	"Saved state 3,",
+	"Saved state 4,",
+	"Restored state 1,",
+	"Restored state 2,",
+	"Restored state 3,",
+	"Restored state 4,",
+	"Slot is empty;",
 	"V,v",`BUILD_DATE
 };
 
@@ -385,6 +390,9 @@ hps_io #(.CONF_STR(CONF_STR), .VDNUM(4)) hps_io
 	.ioctl_download(ioctl_download),
 	.ioctl_index(ioctl_index),
 
+	.info_req(ss_info_req),
+	.info(ss_info),
+
 	.gamma_bus(gamma_bus)
 );
 
@@ -487,6 +495,12 @@ always @(posedge clk_sys) begin
 		spram_d <= snap_ram_data;
 		spram_addr <= snap_ram_addr;
 		spram_we <= snap_ram_we;
+	end
+	else if (ss_save_active) begin
+		// savestate SAVE: read-only RAM dump (CPU is halted)
+		spram_d <= 8'h00;
+		spram_addr <= ss_save_ram_addr;
+		spram_we <= 1'b0;
 	end
 	else if (tap_active) begin
 		spram_d <= tap_ram_data;
@@ -597,6 +611,15 @@ oricatmos oricatmos
 	.ay_snap_creg     (ay_snap_creg),
 	.ula_snap_mode_we (ula_snap_mode_we),
 	.ula_snap_mode    (ula_snap_mode),
+	.save_halt        (ss_save_halt),
+	.save_halted      (ss_save_halted),
+	.cpu_regs_q       (cpu_regs_q),
+	.via_snap_q       (via_snap_q),
+	.ay_snap_rd_addr  (ay_snap_rd_addr),
+	.ay_snap_rd_q     (ay_snap_rd_q),
+	.ay_snap_creg_q   (ay_snap_creg_q),
+	.ay_snap_env_q    (ay_snap_env_q),
+	.ula_snap_mode_q  (ula_snap_mode_q),
 	.patch_active     (cload_patch_active),
 	.patch_data       (cload_patch_data),
 	.c000_we          (c000_we),
@@ -725,6 +748,7 @@ wire [FILE_CACHE_ADDR_WIDTH-1:0] file_download_addr =
 
 wire [FILE_CACHE_ADDR_WIDTH-1:0] file_selected_addr =
   file_download_active ? file_download_addr :
+  ss_load_active       ? ss_fc_addr :
   snap_active          ? snap_cache_addr :
   tap_active           ? tap_cache_addr :
   tap_byte_active      ? tap_byte_cache_addr :
@@ -732,8 +756,11 @@ wire [FILE_CACHE_ADDR_WIDTH-1:0] file_selected_addr =
 wire [FILE_CACHE_ADDR_WIDTH-1:0] filecache_addr =
   (file_selected_addr > FILE_CACHE_LAST) ? FILE_CACHE_LAST : file_selected_addr;
 
-wire [7:0] filecache_write_data = ioctl_dout;
-wire       filecache_write_we   = ioctl_wr && (load_tape || load_sna) && file_download_in_range;
+// Savestate hotkey LOAD DMAs the DDR slot into this cache before
+// retriggering snap_loader — same clobber semantics as an OSD .sna load.
+wire [7:0] filecache_write_data = ss_load_active ? ss_fc_data : ioctl_dout;
+wire       filecache_write_we   = (ioctl_wr && (load_tape || load_sna) && file_download_in_range)
+                                | ss_fc_we;
 
 spram #(.address_width(FILE_CACHE_ADDR_WIDTH), .numwords(FILE_CACHE_NUMWORDS)) filecache (
   .clock(clk_sys),
@@ -748,11 +775,13 @@ spram #(.address_width(FILE_CACHE_ADDR_WIDTH), .numwords(FILE_CACHE_NUMWORDS)) f
 always @(posedge clk_sys) begin
 	if (load_tape && ioctl_download) tape_end <= file_download_addr;
 	if (load_sna && ioctl_download) snap_end <= file_download_addr;
+	else if (ss_snap_end_we) snap_end <= ss_snap_end_set;
 end
 
 always @(posedge clk_sys) begin
 	ioctl_downlD <= ioctl_download;
 	if(ioctl_downlD && ~ioctl_download && load_tape) tape_loaded <= 1'b1;
+	if(ioctl_downlD && ~ioctl_download && load_sna) sna_loaded <= 1'b1;
 	if(ioctl_downlD && ~ioctl_download && load_alt_bios) bios_loaded <= 1'b1;
 end
 
@@ -871,6 +900,7 @@ snap_loader snap_loader (
 	.ioctl_download  (ioctl_download),
 	.ioctl_downlD    (ioctl_downlD),
 	.load_sna        (load_sna),
+	.start           (ss_loader_start),
 	.snap_end        (snap_end),
 	.snap_cache_addr (snap_cache_addr),
 	.snap_cache_q    (snap_cache_q),
@@ -899,6 +929,111 @@ snap_loader snap_loader (
 	.ay_snap_creg    (ay_snap_creg),
 	.ula_snap_mode_we (ula_snap_mode_we),
 	.ula_snap_mode   (ula_snap_mode)
+);
+
+// ---- Savestates (rtl/snap_ss.v, docs/sna_support.md) ----
+// F1-F4 save to / F5-F8 restore from MiSTer Main savestate slots
+// (conf_str "SS3E000000:200000"; Main writes/reads
+// savestates/Oric/<game>_<slot>.ss). SAVE halts the CPU at an
+// instruction boundary and streams an Oricutron-format snapshot into
+// DDR; LOAD copies the slot into the filecache and reruns snap_loader.
+reg          sna_loaded = 1'b0;
+wire         allow_ss = (tape_loaded | sna_loaded | fdd_ready)
+                      & ~ioctl_download & ~reset
+                      & ~snap_active & ~tap_active & ~tap_byte_active;
+
+wire         ss_save_key, ss_load_key;
+wire   [1:0] ss_slot;
+wire         ss_save_halt, ss_save_halted;
+wire  [63:0] cpu_regs_q;
+wire [136:0] via_snap_q;
+wire   [3:0] ay_snap_rd_addr;
+wire   [7:0] ay_snap_rd_q;
+wire   [3:0] ay_snap_creg_q;
+wire   [3:0] ay_snap_env_q;
+wire   [2:0] ula_snap_mode_q;
+wire         ss_save_active;
+wire  [15:0] ss_save_ram_addr;
+wire         ss_load_active;
+wire  [17:0] ss_fc_addr;
+wire   [7:0] ss_fc_data;
+wire         ss_fc_we;
+wire  [17:0] ss_snap_end_set;
+wire         ss_snap_end_we;
+wire         ss_loader_start;
+wire  [27:1] ss_ddr_addr;
+wire  [63:0] ss_ddr_din, ss_ddr_dout;
+wire         ss_ddr_req, ss_ddr_rnw, ss_ddr_ready;
+wire   [7:0] ss_ddr_be;
+wire   [7:0] ss_info;
+wire         ss_info_req;
+
+savestate_hotkeys savestate_hotkeys (
+	.clk     (clk_sys),
+	.ps2_key (ps2_key),
+	.allow   (allow_ss),
+	.ss_save (ss_save_key),
+	.ss_load (ss_load_key),
+	.ss_slot (ss_slot)
+);
+
+snap_ss snap_ss (
+	.clk_sys       (clk_sys),
+	.reset         (reset),
+	.save_req      (ss_save_key),
+	.load_req      (ss_load_key),
+	.req_slot      (ss_slot),
+	.allow         (allow_ss),
+	.save_halt     (ss_save_halt),
+	.cpu_halted    (ss_save_halted),
+	.cpu_regs      (cpu_regs_q),
+	.via_q         (via_snap_q),
+	.ay_rd_addr    (ay_snap_rd_addr),
+	.ay_rd_q       (ay_snap_rd_q),
+	.ay_creg_q     (ay_snap_creg_q),
+	.ay_env_q      (ay_snap_env_q),
+	.ula_mode_q    (ula_snap_mode_q),
+	.rom_sel_q     (rom_sel),
+	.save_active   (ss_save_active),
+	.save_ram_addr (ss_save_ram_addr),
+	.ram_q         (ram_q),
+	.load_active   (ss_load_active),
+	.fc_addr       (ss_fc_addr),
+	.fc_data       (ss_fc_data),
+	.fc_we         (ss_fc_we),
+	.snap_end_set  (ss_snap_end_set),
+	.snap_end_we   (ss_snap_end_we),
+	.loader_start  (ss_loader_start),
+	.ddr_addr      (ss_ddr_addr),
+	.ddr_din       (ss_ddr_din),
+	.ddr_dout      (ss_ddr_dout),
+	.ddr_req       (ss_ddr_req),
+	.ddr_rnw       (ss_ddr_rnw),
+	.ddr_be        (ss_ddr_be),
+	.ddr_ready     (ss_ddr_ready),
+	.ss_info       (ss_info),
+	.ss_info_req   (ss_info_req)
+);
+
+ddram ddram (
+	.DDRAM_CLK        (clk_sys),
+	.DDRAM_BUSY       (DDRAM_BUSY),
+	.DDRAM_BURSTCNT   (DDRAM_BURSTCNT),
+	.DDRAM_ADDR       (DDRAM_ADDR),
+	.DDRAM_DOUT       (DDRAM_DOUT),
+	.DDRAM_DOUT_READY (DDRAM_DOUT_READY),
+	.DDRAM_RD         (DDRAM_RD),
+	.DDRAM_DIN        (DDRAM_DIN),
+	.DDRAM_BE         (DDRAM_BE),
+	.DDRAM_WE         (DDRAM_WE),
+
+	.ch1_addr         (ss_ddr_addr),
+	.ch1_dout         (ss_ddr_dout),
+	.ch1_din          (ss_ddr_din),
+	.ch1_req          (ss_ddr_req),
+	.ch1_rnw          (ss_ddr_rnw),
+	.ch1_be           (ss_ddr_be),
+	.ch1_ready        (ss_ddr_ready)
 );
 
 ///////////////////////////////////////////////////
